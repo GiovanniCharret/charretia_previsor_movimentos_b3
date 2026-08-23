@@ -1,0 +1,474 @@
+<title>CharretIA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;1,8..60,400&display=swap">
+<style>
+  :root {
+    /* neutros com viés azul-esverdeado — escolhidos, não herdados */
+    --ground:#EEF2F1; --surface:#FFFFFF; --surface-2:#F6F9F8;
+    --ink:#0F1719; --ink-2:#43514F; --ink-3:#75837F;
+    --rule:#D6DEDB; --rule-forte:#B9C4C0;
+    /* acento: leitura de instrumento */
+    --acento:#1F7A6B; --acento-fundo:#E4F0ED;
+    /* escala semântica = FORÇA DA EVIDÊNCIA (sequencial), não direção */
+    --forte:#1F7A6B;   --forte-fundo:#E4F0ED;
+    --moderada:#966B14; --moderada-fundo:#F6EEDC;
+    --fraca:#6E7B78;   --fraca-fundo:#EBEFEE;
+    --alerta:#9C4335;  --alerta-fundo:#F7E9E6;
+    --display:"Archivo", "Helvetica Neue", Arial, sans-serif;
+    --serif:"Source Serif 4", Georgia, "Times New Roman", serif;
+    --mono:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0E1417; --surface:#161E21; --surface-2:#1B2529;
+      --ink:#E6ECEA; --ink-2:#A8B6B2; --ink-3:#7C8A86;
+      --rule:#25322F; --rule-forte:#33433F;
+      --acento:#4FBFA8; --acento-fundo:#14302B;
+      --forte:#4FBFA8;   --forte-fundo:#14302B;
+      --moderada:#D3A34A; --moderada-fundo:#2E2617;
+      --fraca:#8B9995;   --fraca-fundo:#1E2729;
+      --alerta:#D6796A;  --alerta-fundo:#2E1A16;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0E1417; --surface:#161E21; --surface-2:#1B2529;
+    --ink:#E6ECEA; --ink-2:#A8B6B2; --ink-3:#7C8A86;
+    --rule:#25322F; --rule-forte:#33433F;
+    --acento:#4FBFA8; --acento-fundo:#14302B;
+    --forte:#4FBFA8;   --forte-fundo:#14302B;
+    --moderada:#D3A34A; --moderada-fundo:#2E2617;
+    --fraca:#8B9995;   --fraca-fundo:#1E2729;
+    --alerta:#D6796A;  --alerta-fundo:#2E1A16;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--ground); color:var(--ink);
+         font-family:var(--display); font-weight:500; line-height:1.5;
+         -webkit-font-smoothing:antialiased; }
+  .env { max-width:1080px; margin:0 auto; padding:0 20px 64px; }
+  :focus-visible { outline:2px solid var(--acento); outline-offset:2px; border-radius:2px; }
+
+  /* ---------- cabeçalho ---------- */
+  header { display:flex; align-items:flex-end; justify-content:space-between;
+           gap:20px; flex-wrap:wrap; padding:34px 0 20px; border-bottom:1px solid var(--rule-forte); }
+  .marca { font-family:var(--display); font-weight:700; font-size:19px; letter-spacing:-0.01em; }
+  .marca span { color:var(--acento); }
+  .carimbo { font-family:var(--mono); font-size:11.5px; color:var(--ink-3);
+             text-align:right; line-height:1.7; }
+  .carimbo b { color:var(--ink-2); font-weight:500; }
+
+  /* ---------- leitura mestra ---------- */
+  .mestra { background:var(--surface); border:1px solid var(--rule);
+            border-radius:3px; margin-top:26px; padding:26px 28px; }
+  .rotulo { font-family:var(--display); font-size:10.5px; font-weight:700;
+            letter-spacing:0.13em; text-transform:uppercase; color:var(--ink-3); }
+  .mestra-topo { display:flex; gap:26px; align-items:flex-start; flex-wrap:wrap;
+                 justify-content:space-between; }
+  .mestra h1 { font-family:var(--display); font-weight:700; font-size:31px; margin:10px 0 4px;
+               letter-spacing:-0.02em; text-wrap:balance; }
+  .mestra .sub { font-family:var(--serif); font-size:15.5px; color:var(--ink-2);
+                 max-width:56ch; margin:0; }
+  .veredito { font-family:var(--mono); font-size:11.5px; font-weight:700; letter-spacing:0.06em;
+              text-transform:uppercase; padding:7px 13px; border-radius:2px; white-space:nowrap;
+              color:var(--fraca); background:var(--fraca-fundo);
+              border:1px solid color-mix(in srgb, var(--fraca) 35%, transparent); }
+  /* quando o próprio índice está na zona de viés, o veredito muda de tom — é o único
+     estado em que a tela tem algo a dizer, e precisa se distinguir do "sem sinal". */
+  .veredito.v-zona { color:var(--acento); background:var(--acento-fundo);
+                     border-color:color-mix(in srgb, var(--acento) 45%, transparent); }
+
+  /* ---------- baixar a planilha de estudo ---------- */
+  /* Utilitário, não chamada para ação: fica em tom apagado ao lado do que de fato importa na
+     leitura, e só ganha contraste no ponteiro ou no foco de teclado. */
+  .baixar { font-family:var(--mono); font-size:10.5px; font-weight:600; letter-spacing:0.04em;
+            text-transform:uppercase; text-decoration:none; white-space:nowrap;
+            display:inline-block; padding:6px 10px; border-radius:2px;
+            color:var(--ink-3); border:1px solid var(--rule); }
+  .baixar:hover { color:var(--ink); border-color:var(--rule-forte); background:var(--surface-2); }
+  /* NÃO renomear para `.mini`: esse nome já pertence à régua de decis (abaixo), e a colisão
+     faria o botão herdar o grid de dez colunas dela. */
+  .baixar.compacto { padding:3px 7px; font-size:9.5px; letter-spacing:0.02em; }
+  /* A pilha do veredito: o selo em cima, o download embaixo, alinhados à direita para não
+     competir com o título à esquerda. */
+  .veredito-pilha { display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
+
+  /* ---------- régua de decis ---------- */
+  .regua { margin-top:24px; }
+  .regua-barra { display:grid; grid-template-columns:repeat(10,1fr); gap:3px; }
+  .seg { height:34px; border-radius:1px; background:var(--surface-2);
+         border:1px solid var(--rule); position:relative; }
+  .seg.zona { background:var(--acento-fundo); border-color:color-mix(in srgb, var(--acento) 30%, transparent); }
+  .seg.aqui { background:var(--acento); border-color:var(--acento); }
+  .seg i { position:absolute; inset:auto 0 5px; text-align:center; font-style:normal;
+           font-family:var(--mono); font-size:10px; color:var(--ink-3); }
+  .seg.aqui i { color:var(--surface); font-weight:700; }
+  .regua-pes { display:flex; justify-content:space-between; margin-top:8px;
+               font-family:var(--mono); font-size:10.5px; color:var(--ink-3); }
+
+  .medidas { display:flex; gap:0; flex-wrap:wrap; margin-top:22px;
+             border-top:1px solid var(--rule); }
+  .medida { flex:1 1 128px; padding:14px 16px 2px 0; }
+  .medida .v { font-family:var(--mono); font-size:22px; font-weight:700;
+               font-variant-numeric:tabular-nums; letter-spacing:-0.02em; }
+  .medida .k { font-family:var(--display); font-size:10px; font-weight:600; letter-spacing:0.1em;
+               text-transform:uppercase; color:var(--ink-3); margin-top:3px; }
+
+  /* ---------- faixa da tese ---------- */
+  .tese { margin-top:14px; background:var(--moderada-fundo);
+          border:1px solid color-mix(in srgb, var(--moderada) 40%, transparent);
+          border-radius:3px; padding:20px 24px; display:flex; gap:20px; flex-wrap:wrap; }
+  .tese .n { font-family:var(--mono); font-size:30px; font-weight:700; color:var(--moderada);
+             line-height:1; font-variant-numeric:tabular-nums; }
+  .tese .txt { flex:1 1 420px; }
+  .tese h2 { font-family:var(--display); font-weight:700; font-size:15px; margin:0 0 7px;
+             color:var(--moderada); letter-spacing:0.01em; }
+  .tese p { font-family:var(--serif); font-size:14.5px; color:var(--ink-2); margin:0; max-width:68ch; }
+  .tese p b { color:var(--ink); font-weight:400; font-style:italic; }
+
+  /* ---------- tabela ---------- */
+  .secao { display:flex; align-items:baseline; gap:14px; margin:38px 0 4px; flex-wrap:wrap; }
+  .secao h2 { font-family:var(--display); font-weight:700; font-size:17px; margin:0;
+              letter-spacing:-0.01em; }
+  .secao .nota { font-family:var(--serif); font-size:14px; color:var(--ink-3); }
+  .quadro { background:var(--surface); border:1px solid var(--rule); border-radius:3px;
+            overflow-x:auto; margin-top:12px; }
+  /* Quando a tabela não cabe, ela é cortada rente à borda e nada indica que há mais para o lado —
+     foi assim que a coluna de download passou por inexistente. O aviso aparece só na faixa de
+     largura em que a rolagem existe de verdade — 981px, medido por busca binária no navegador. */
+  .dica-rolagem { display:none; }
+  @media (max-width:981px) {
+    .dica-rolagem { display:block; font-family:var(--mono); font-size:11px; color:var(--ink-3);
+                    margin:8px 0 0; }
+  }
+  table { width:100%; border-collapse:collapse; min-width:820px; }
+  thead th { font-family:var(--display); font-size:9.5px; font-weight:700; letter-spacing:0.1em;
+             text-transform:uppercase; color:var(--ink-3); text-align:right; padding:13px 8px;
+             border-bottom:1px solid var(--rule-forte); white-space:nowrap; }
+  thead th:first-child, thead th.esq { text-align:left; }
+  /* Espaçamento horizontal enxuto (8px, não 12px): com dez colunas, os 4px a mais de cada lado
+     somavam 80px e empurravam a coluna de download para fora da tela em telas de 1024px. */
+  tbody td { padding:13px 8px; border-bottom:1px solid var(--rule); text-align:right;
+             font-family:var(--mono); font-size:13px; font-variant-numeric:tabular-nums;
+             color:var(--ink-2); }
+  tbody tr:last-child td { border-bottom:none; }
+  tbody td.esq { text-align:left; }
+  /* Colunas numéricas nunca quebram: "+11,0 pp" em duas linhas é ilegível. A moldura já rola na
+     horizontal, então o custo de manter tudo numa linha é rolagem, não texto partido. */
+  tbody td:not(.esq) { white-space:nowrap; }
+  tbody tr:hover td { background:var(--surface-2); }
+  .papel { font-family:var(--display); font-weight:700; font-size:14px; color:var(--ink);
+           letter-spacing:0.01em; }
+  .destaque { color:var(--ink); font-weight:700; }
+
+  /* mini-régua na linha */
+  .mini { display:inline-grid; grid-template-columns:repeat(10,7px); gap:1.5px; vertical-align:-3px; }
+  .mini span { height:15px; background:var(--surface-2); border:1px solid var(--rule); border-radius:1px; }
+  .mini span.on { background:var(--acento); border-color:var(--acento); }
+
+  .chip { display:inline-block; font-family:var(--display); font-size:10px; font-weight:700;
+          letter-spacing:0.07em; text-transform:uppercase; padding:4px 9px; border-radius:2px;
+          white-space:nowrap; }
+  .c-forte { color:var(--forte); background:var(--forte-fundo);
+             border:1px solid color-mix(in srgb, var(--forte) 38%, transparent); }
+  .c-moderada { color:var(--moderada); background:var(--moderada-fundo);
+                border:1px solid color-mix(in srgb, var(--moderada) 38%, transparent); }
+  .c-fraca { color:var(--fraca); background:var(--fraca-fundo);
+             border:1px solid color-mix(in srgb, var(--fraca) 32%, transparent); }
+  .c-alerta { color:var(--alerta); background:var(--alerta-fundo);
+              border:1px solid color-mix(in srgb, var(--alerta) 40%, transparent); }
+  tr.marcada td { background:color-mix(in srgb, var(--acento-fundo) 55%, transparent); }
+  tr.marcada:hover td { background:var(--acento-fundo); }
+
+  .aviso-linha { font-family:var(--serif); font-size:12.5px; color:var(--alerta);
+                 font-style:italic; }
+
+  /* ---------- coluna de leitura ----------
+     A tabela acima precisa de toda a largura; o texto corrido, não. Uma medida de ~65 caracteres
+     é o limite de legibilidade, então a coluna é CENTRADA em vez de encostada à esquerda — assim
+     o espaço que sobra fica simétrico e a composição lê como deliberada, não como caixa vazia. */
+  .leitura { max-width:760px; margin-left:auto; margin-right:auto; }
+
+  /* ---------- glossário das colunas ---------- */
+  .glossario { margin-top:40px; border-top:2px solid var(--rule-forte); padding-top:22px; }
+  .glossario h2, .modelo h2 { font-family:var(--display); font-weight:700; font-size:15px;
+                              margin:0 0 16px; letter-spacing:0.01em; }
+  .glossario dl { margin:0; display:grid; gap:2px; }
+  .verbete { display:grid; grid-template-columns:190px 1fr; gap:22px;
+             padding:14px 0; border-top:1px solid var(--rule); }
+  .verbete:first-child { border-top:none; padding-top:0; }
+  .verbete dt { font-family:var(--display); font-size:10.5px; font-weight:700; letter-spacing:0.1em;
+                text-transform:uppercase; color:var(--acento); padding-top:2px; }
+  /* sem max-width em ch: a coluna .leitura já impõe a medida, e um segundo limite deixaria
+     espaço morto dentro de um bloco que já está no tamanho certo. */
+  .verbete dd { margin:0; font-family:var(--serif); font-size:14.5px; color:var(--ink-2); }
+  .verbete dd b { font-family:var(--display); font-size:13px; font-weight:600; color:var(--ink); }
+  .verbete dd b.cuidado { color:var(--alerta); }
+  .verbete dd em { font-style:italic; }
+  .escala { display:block; margin-top:9px; font-size:13.5px; }
+  .escala .chip { margin-right:9px; }
+
+  /* ---------- como o modelo funciona ---------- */
+  .modelo { margin-top:40px; border-top:2px solid var(--rule-forte); padding-top:22px; }
+  .chamada { font-family:var(--serif); font-size:15.5px; font-style:italic; color:var(--ink-3);
+             margin:0 0 22px; }
+  .passos { margin:0; padding:0; list-style:none; counter-reset:passo; display:grid; gap:26px; }
+  .passos > li { counter-increment:passo; display:grid; grid-template-columns:38px 1fr; gap:18px; }
+  .passos > li::before { content:counter(passo); font-family:var(--mono); font-size:15px;
+                         font-weight:700; color:var(--surface); background:var(--acento);
+                         width:30px; height:30px; border-radius:2px; display:grid;
+                         place-items:center; }
+  .passos h3 { font-family:var(--display); font-weight:700; font-size:15.5px; margin:4px 0 8px;
+               letter-spacing:-0.005em; text-wrap:balance; }
+  .passos p { font-family:var(--serif); font-size:14.5px; color:var(--ink-2); margin:0 0 9px; }
+  .passos p:last-child { margin-bottom:0; }
+  .passos p b { font-family:var(--display); font-size:13px; font-weight:600; color:var(--ink); }
+
+  /* A caixa final tem DOIS assuntos independentes, então ela é o lugar certo para gastar a
+     largura que sobra: lado a lado em tela larga, empilhados no celular. */
+  .caixa-nota { margin-top:28px; background:var(--surface); border:1px solid var(--rule);
+                border-left:3px solid var(--acento); border-radius:3px; padding:22px 26px;
+                display:grid; gap:24px; }
+  .caixa-nota h3 { font-family:var(--display); font-weight:700; font-size:13.5px; margin:0 0 8px;
+                   letter-spacing:0.01em; }
+  .caixa-nota p { font-family:var(--serif); font-size:14.5px; color:var(--ink-2); margin:0; }
+  .caixa-nota p b { font-family:var(--display); font-size:13px; font-weight:600; color:var(--ink); }
+
+  @media (min-width:700px) {
+    .caixa-nota { grid-template-columns:1fr 1fr; gap:32px; align-items:start; }
+  }
+  @media (max-width:620px) {
+    .verbete { grid-template-columns:1fr; gap:6px; }
+    .passos > li { grid-template-columns:1fr; gap:8px; }
+  }
+</style>
+
+<div class="env">
+
+<header>
+  <div>
+    <div class="marca">Charret<span>IA</span></div>
+    <div class="rotulo" style="margin-top:6px">modelo de aprendizado de máquina com médias móveis</div>
+  </div>
+</header>
+
+<!-- ===== leitura mestra: o índice ===== -->
+<section class="mestra">
+  <div class="mestra-topo">
+    <div>
+      <div class="rotulo">leitura mestra — índice</div>
+      <h1>{{TITULO_INDICE}}</h1>
+      <p class="sub"><b>{{SUB_INDICE}}</b></p>
+    </div>
+    <div class="veredito-pilha">
+      <div class="veredito {{CLASSE_VEREDITO}}">{{VEREDITO}}</div>
+      {{BAIXAR_INDICE}}
+    </div>
+  </div>
+
+  <div class="regua">
+    <div class="regua-barra">{{REGUA}}</div>
+    <div class="regua-pes">
+      <span>← mais abaixo da média (zona de viés observado)</span>
+      <span>mais acima da média →</span>
+    </div>
+  </div>
+
+  <div class="medidas">{{MEDIDAS}}</div>
+</section>
+
+<!-- ===== a tese: por que o índice vem primeiro ===== -->
+<div class="tese">
+  <div class="n">1</div>
+  <div class="txt">
+    <h2>Os papéis abaixo não são apostas independentes</h2>
+    <p>O efeito medido existe no <b>próprio índice</b>: quando o mercado brasileiro cai muito abaixo
+    da sua média, ele tende a voltar. Todo papel herda esse movimento.</p>
+  </div>
+</div>
+
+<!-- ===== detalhamento por papel ===== -->
+<div class="secao">
+  <h2>Detalhamento por papel</h2>
+  <span class="nota">Só o lado comprado. A cauda alta não sustenta venda.</span>
+</div>
+
+<div class="quadro">
+  <table>
+    <thead>
+      <tr>
+        <th class="esq">papel</th>
+        <th class="esq">posição no decil</th>
+        <th>dist. à média</th>
+        <th>hist. do decil</th>
+        <th>taxa-base</th>
+        <th>excesso</th>
+        <th>freq. +</th>
+        <th>episódios</th>
+        <th class="esq">evidência</th>
+        <th class="esq">dados</th>
+      </tr>
+    </thead>
+    <tbody>{{LINHAS}}</tbody>
+  </table>
+</div>
+<p class="dica-rolagem">→ role a tabela para o lado para chegar à coluna <b>dados</b>.</p>
+<!-- ===== como ler as colunas ===== -->
+<section class="glossario">
+ <div class="leitura">
+  <h2>Como ler cada coluna</h2>
+  <dl>
+    <div class="verbete">
+      <dt>posição no decil</dt>
+      <dd>Onde o papel está <em>hoje</em>, numa escala de dez faixas. A faixa 0 reúne os 10% de dias
+      mais afastados <b>para baixo</b> da média móvel; a faixa 9, os 10% mais afastados para cima.
+      As três primeiras faixas são a zona onde o viés de alta foi observado.</dd>
+    </div>
+    <div class="verbete">
+      <dt>distância à média</dt>
+      <dd>Quanto o preço de fechamento está acima ou abaixo da média móvel, em porcentagem.
+      É o número bruto, antes de qualquer normalização.</dd>
+    </div>
+    <div class="verbete">
+      <dt>histórico do decil</dt>
+      <dd>Retorno <b>médio</b> observado nos 45 pregões seguintes, considerando todos os dias
+      passados em que o papel esteve nessa mesma faixa. Não é previsão: é o que já aconteceu depois
+      de dias parecidos com hoje.</dd>
+    </div>
+    <div class="verbete">
+      <dt>taxa-base</dt>
+      <dd>O retorno médio do papel em <b>qualquer</b> dia do período, sem condicionar em nada.
+      É o ponto de comparação obrigatório — sem ele, um papel que só subiu pareceria ter sinal.</dd>
+    </div>
+    <div class="verbete">
+      <dt>excesso</dt>
+      <dd>Histórico do decil <b>menos</b> taxa-base, em pontos percentuais. Responde: estar nessa
+      faixa acrescentou alguma coisa, ou é só o papel sendo o papel?
+      <b class="cuidado">Cuidado:</b> excesso positivo não significa lucro. Um papel cuja taxa-base
+      é −7,9% pode ter excesso de +3,5 pontos e ainda assim ter rendido −4,4%.</dd>
+    </div>
+    <div class="verbete">
+      <dt>frequência positiva</dt>
+      <dd>De cada 100 dias passados nessa faixa, em quantos o retorno dos 45 pregões seguintes
+      foi maior que zero. <b>Complementa a média e às vezes a contradiz:</b> uma média alta puxada
+      por dois episódios excepcionais aparece aqui como frequência baixa. Quando os dois números
+      discordam, confie mais na frequência.</dd>
+    </div>
+    <div class="verbete">
+      <dt>episódios</dt>
+      <dd>Quantos eventos <b>independentes</b> sustentam a linha — e é o número mais importante da
+      tabela. Uma crise que joga o papel para a faixa 0 durante 30 pregões seguidos não são 30
+      observações: é <b>uma</b>. Dias contíguos são agrupados num só episódio. Por isso uma linha
+      pode ter 120 dias de amostra e apenas 7 episódios. <b class="cuidado">Abaixo de 5 episódios,
+      trate a linha como ilustração, não como evidência.</b></dd>
+    </div>
+    <div class="verbete">
+      <dt>evidência</dt>
+      <dd>Resumo da <b>força do histórico</b>, não do tamanho do retorno — um papel pode ter
+      retorno alto e evidência fraca. Estes são os seis rótulos possíveis, e a regra que produz
+      cada um. Os dois de alerta são verificados <b>antes</b> de qualquer contagem de episódios:
+      são armadilhas, e esconder uma delas atrás de um rótulo elogioso seria o pior erro da tela.
+      <span class="escala">
+        <span class="chip c-alerta">bate a base, mas perde</span> na zona, o excesso é positivo mas
+        o retorno absoluto é negativo. O papel rendeu mais que a <em>própria</em> média e ainda
+        assim perdeu dinheiro — render menos mal não é ganhar.
+      </span>
+      <span class="escala">
+        <span class="chip c-alerta">contradiz o padrão</span> na zona, o excesso é negativo. Neste
+        papel, estar muito abaixo da média foi historicamente <em>pior</em> que um dia qualquer —
+        o oposto do que a tela procura.
+      </span>
+      <span class="escala">
+        <span class="chip c-fraca">fora da zona</span> o papel não está nos decis 0 a 2. Não há
+        viés a reportar, por melhor que o histórico dele pareça.
+      </span>
+      <span class="escala">
+        <span class="chip c-forte">forte</span> na zona, sem armadilha, mais de 15 episódios
+        independentes.
+      </span>
+      <span class="escala">
+        <span class="chip c-moderada">moderada</span> na zona, sem armadilha, de 5 a 15 episódios.
+      </span>
+      <span class="escala">
+        <span class="chip c-fraca">fraca</span> na zona, sem armadilha, menos de 5 episódios.
+        Ilustração, não evidência.
+      </span>
+      O degrau “forte” existe para o dia em que algum papel alcançar: passar de 15 episódios
+      independentes em cinco anos é raro, e na prática a tela raramente o exibe.</dd>
+    </div>
+  </dl>
+ </div>
+</section>
+
+<!-- ===== como o modelo funciona ===== -->
+<section class="modelo">
+ <div class="leitura">
+  <h2>Como este modelo funciona</h2>
+  <p class="chamada">Escrito para quem nunca mexeu com isso. Não há caixa-preta aqui — o
+  modelo é, no fundo, uma contagem bem-feita.</p>
+
+  <ol class="passos">
+    <li>
+      <div class="corpo"><h3>Construir uma régua que sirva para qualquer papel</h3>
+      <p>Perguntar “o preço caiu 12%?” não diz nada sozinho: 12% é um tremor num papel agitado e um
+      terremoto num papel calmo. Então dividimos a distância até a média móvel pelo <b>desvio-padrão
+      dessa mesma distância nos últimos 252 pregões</b> — cerca de um ano. O resultado responde
+      “quão longe isto está, <em>para este papel</em>?”, e passa a ser comparável entre empresas.</p>
+    </div>
+    </li>
+    <li>
+      <div class="corpo"><h3>Separar o passado em dez gavetas</h3>
+      <p>Ordenamos todos os dias passados por essa régua e cortamos em dez grupos do mesmo tamanho.
+      A gaveta 0 recebe os 10% de dias mais afastados para baixo; a gaveta 9, os mais afastados para
+      cima. Usar gavetas por posição, e não limiares escolhidos a dedo, evita o vício de ficar
+      testando cortes até achar um que dê um resultado bonito.</p>
+    </div>
+    </li>
+    <li>
+      <div class="corpo"><h3>Contar o que aconteceu depois</h3>
+      <p>Para cada gaveta, olhamos o retorno dos 45 pregões <b>seguintes</b> a cada um daqueles dias
+      e tiramos a média, a frequência de acertos e a contagem de episódios. <b>É isto que o modelo
+      é:</b> uma tabela de “dos dias parecidos com hoje, o que veio depois”. Ele não adivinha o
+      futuro; ele mede o passado condicionado a uma situação.</p>
+    </div>
+    </li>
+    <li>
+      <div class="corpo"><h3>Levantar uma parede entre passado e futuro</h3>
+      <p>Aqui mora a diferença entre um estudo honesto e um autoengano. Os cortes das gavetas são
+      calculados <b>somente com o período de treino</b> (até o fim de 2020). Se usássemos a série
+      inteira, estaríamos deixando o futuro definir o que conta como “extremo” no passado — e o
+      resultado ficaria bonito por construção, sem valer nada.</p>
+      <p>Pela mesma razão, jogamos fora os 45 pregões que separam treino e teste: o retorno de 45
+      dias do último dia de treino termina <em>dentro</em> do teste, e mantê-lo seria contrabandear
+      informação de um lado para o outro.</p>
+    </div>
+    </li>
+    <li>
+      <div class="corpo"><h3>Conferir no período que o modelo nunca viu</h3>
+      <p>Só então aplicamos aquelas gavetas ao período de teste (de 2021 em diante) e perguntamos se
+      o padrão se repete. Um padrão que aparece no treino e some no teste não era padrão: era o
+      modelo decorando ruído. Todos os números desta tela vêm do <b>teste</b>, nunca do treino.</p>
+    </div>
+    </li>
+  </ol>
+
+  <div class="caixa-nota">
+    <div>
+      <h3>Por que isto se chama aprendizado de máquina</h3>
+      <p>Porque as faixas são <b>aprendidas dos dados</b> em vez de escolhidas por opinião, e porque
+      a validação é feita fora da amostra. Não é uma rede neural — e isso é deliberado: testamos
+      uma, e ela ficou <em>pior</em>. Com pouca informação real disponível, um modelo mais flexível
+      apenas decora ruído com mais eficiência. A escolha aqui é pela versão simples o bastante para
+      você conseguir auditar cada número à mão.</p>
+    </div>
+    <div>
+      <h3>O que este modelo não faz</h3>
+      <p>Não diz quando comprar nem quanto. Não considera custo de corretagem, imposto nem o quanto
+      o preço ainda pode cair antes de se recuperar. Não prevê o futuro de um papel específico — ele
+      descreve uma tendência média, medida sobre poucas dezenas de eventos independentes. Tratar a
+      média de um grupo como promessa para o caso individual é o erro mais comum de quem começa.</p>
+    </div>
+  </div>
+ </div>
+</section>
+
+</div>

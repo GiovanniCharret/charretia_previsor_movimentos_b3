@@ -1,0 +1,75 @@
+# Gera a tela de triagem e publica no GitHub Pages.
+#
+# Falha do BOVA11 derruba o job de propósito: `gerar_tela.py` encerra com erro quando o índice não
+# passa na peneira, porque sem a leitura mestra a página viraria uma lista de sinais soltos. Falhas
+# de papéis individuais o gerador absorve e segue.
+name: Publicar tela
+
+on:
+  # Publica a cada mudança na branch padrão. Sem este gatilho, `schedule` espera o horário e
+  # `workflow_dispatch` espera um clique — e nada acontece ao subir código novo.
+  push:
+    branches: [main]
+  schedule:
+    # 21:30 UTC = 18:30 de Brasília, depois do fechamento da B3. Só dias úteis.
+    # ATENÇÃO: agendamento só dispara na branch padrão do repositório.
+    - cron: "30 21 * * 1-5"
+  workflow_dispatch:            # botão de execução manual, na aba Actions
+
+# Permissões mínimas para publicar no Pages pela via de Actions.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Uma publicação por vez; não cancela a que está em andamento.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    # ~70 downloads levam 1 a 2 minutos; a folga cobre lentidão da fonte sem travar a fila.
+    timeout-minutes: 20
+    environment:
+      name: github-pages
+      url: ${{ steps.publicacao.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      # Os testes rodam offline, com preços sintéticos: não tocam a rede e levam segundos.
+      # Aqui eles cabem, porque este repositório não carrega o laboratório junto.
+      - name: Rodar os testes
+        run: pip install pytest && python -m pytest -q
+
+      - name: Gerar a página
+        run: python gerar_tela.py
+
+      # Sem esta conferência, uma saída no lugar errado vira um 404 no site — falha silenciosa, que
+      # só aparece quando alguém abre a página. Aqui vira erro no log, com a árvore impressa.
+      - name: Conferir o que será publicado
+        run: |
+          echo "conteúdo de saida/:"
+          find saida -maxdepth 2 | sort
+          test -f saida/index.html \
+            || { echo "::error::index.html não está na raiz da pasta publicada"; exit 1; }
+          echo "planilhas: $(ls saida/dados/*.xlsx | wc -l)"
+
+      - uses: actions/configure-pages@v5
+
+      # A pasta inteira, não só o index.html: os botões de download apontam para dados/.
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: saida
+
+      - id: publicacao
+        uses: actions/deploy-pages@v4

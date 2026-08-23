@@ -1,0 +1,9 @@
+# Dependências APENAS da tela de distribuição — deliberadamente separadas do requirements.txt da
+# raiz, que carrega o laboratório inteiro (statsmodels, scikit-learn, matplotlib, graphviz). Nada
+# disso é usado aqui, e instalar tudo tornaria cada execução do GitHub Actions várias vezes mais
+# lenta sem nenhum ganho.
+pandas==3.0.3
+numpy==2.5.0
+yfinance==1.5.1
+openpyxl==3.1.5
+tqdm==4.70.0

@@ -1,0 +1,18 @@
+[project]
+name = "charretia-previsor-movimentos-b3"
+version = "0.1.0"
+description = "Tela diária de triagem: posição de cada papel líquido da B3 na escala de afastamento da média móvel"
+requires-python = ">=3.13"
+dependencies = [
+    "pandas==3.0.3",
+    "numpy==2.5.0",
+    "yfinance==1.5.1",
+    "openpyxl==3.1.5",
+    "tqdm==4.70.0",
+]
+
+[tool.pytest.ini_options]
+# A raiz do projeto no caminho de importação: os testes importam `gerar_tela` e `nucleo`
+# diretamente, sem pacote intermediário. Sem isto, `pytest` não os encontra.
+pythonpath = ["."]
+testpaths = ["tests"]
