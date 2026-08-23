@@ -64,7 +64,12 @@ jobs:
             || { echo "::error::index.html não está na raiz da pasta publicada"; exit 1; }
           echo "planilhas: $(ls saida/dados/*.xlsx | wc -l)"
 
+      # `enablement: true` habilita o Pages pela API na primeira execução, em vez de exigir que
+      # alguém acerte Settings → Pages à mão. Sem isto, o passo falha com "Get Pages site failed"
+      # enquanto a origem não estiver em GitHub Actions — que é o estado padrão de um repo novo.
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       # A pasta inteira, não só o index.html: os botões de download apontam para dados/.
       - uses: actions/upload-pages-artifact@v3
