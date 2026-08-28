@@ -1,5 +1,7 @@
 # CharretIA — previsor de movimentos da B3
 
+**No ar:** https://giovannicharret.github.io/charretia_previsor_movimentos_b3/
+
 Gera uma página estática com a posição de cada papel líquido da B3 na escala de afastamento da
 média móvel, e o que historicamente aconteceu depois de dias naquela posição. Publicada
 diariamente no GitHub Pages.
@@ -124,15 +126,20 @@ Na página aberta, confira:
 ## Publicação
 
 `.github/workflows/publicar.yml` roda a cada push na `main`, às 18h30 de Brasília em dias úteis, e
-por clique manual (`Run workflow`). Em `Settings` → `Pages`, a origem precisa estar em
-**GitHub Actions** — com "Deploy from a branch" o GitHub serve a raiz do repositório, que não tem
-`index.html`, e o site responde 404.
+por clique manual (`Run workflow`). O passo `configure-pages` usa `enablement: true`, então **o
+próprio workflow habilita o Pages** na primeira execução — não é preciso acertar `Settings` → `Pages`
+à mão.
 
-Dois pontos que mordem:
+Três pontos que mordem, todos aprendidos na marra:
 
 1. **`schedule` e `workflow_dispatch` só valem na branch padrão.** Um workflow que existe apenas
-   numa branch de trabalho não aparece para execução manual nem dispara no horário.
-2. **A rede é a única dependência externa.** O `yfinance` falha em alguns papéis de forma
+   numa branch de trabalho não aparece para execução manual nem dispara no horário — fica invisível,
+   sem nenhum erro em lugar nenhum. Foi por isso que o gatilho de `push` existe.
+2. **Sem `enablement: true`, um repositório novo falha** com *"Get Pages site failed"*: a API
+   responde 404 porque ainda não existe site algum. E com a origem em "Deploy from a branch" o
+   GitHub serve a raiz do repositório, que não tem `index.html` — o site responde 404 mesmo com o
+   job verde.
+3. **A rede é a única dependência externa.** O `yfinance` falha em alguns papéis de forma
    intermitente e o gerador segue; se o **BOVA11** falhar, o processo para com erro, que é o
    comportamento certo.
 

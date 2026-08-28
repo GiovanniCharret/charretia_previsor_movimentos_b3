@@ -1,6 +1,9 @@
+import re
+from datetime import datetime, timezone
+
 import numpy as np, pandas as pd, pytest
 from gerar_tela import (classifica_evidencia, estado_de_hoje, monta_pagina,
-                        seleciona_destaques, MARCADORES)
+                        seleciona_destaques, FUSO_BRASILIA, MARCADORES)
 
 
 def _papel(ticker, decil, episodios=8, excesso=0.02, media=0.05):
@@ -172,3 +175,28 @@ def test_monta_pagina_marca_o_decil_atual_na_regua():
     assert html.count('class="seg aqui"') == 1
     # o segmento marcado carrega o número do decil atual.
     assert '<div class="seg aqui"><i>7</i></div>' in html
+
+
+class TestCarimboDeExecucao:
+    def test_usa_o_horario_recebido(self):
+        # O carimbo é injetável para o teste poder fixar o instante — sem isso a única verificação
+        # possível seria por expressão regular, que não pega erro de formato.
+        template = open("template.html", encoding="utf-8").read()
+        html = monta_pagina(_papel("BOVA11", 3), [], template,
+                            agora=datetime(2026, 8, 23, 18, 34, tzinfo=FUSO_BRASILIA))
+        assert "23/08/2026 às 18h34" in html
+
+    def test_converte_horario_de_outro_fuso(self):
+        # O GitHub Actions roda em UTC: sem a conversão, a página anunciaria 21h34 para um pregão
+        # que fechou às 18h34 — três horas de erro no único número que o leitor pode conferir
+        # contra o próprio relógio.
+        template = open("template.html", encoding="utf-8").read()
+        html = monta_pagina(_papel("BOVA11", 3), [], template,
+                            agora=datetime(2026, 8, 23, 21, 34, tzinfo=timezone.utc))
+        assert "23/08/2026 às 18h34" in html
+
+    def test_sem_argumento_carimba_o_instante_atual(self):
+        # O caminho que a publicação de fato usa: nenhum chamador passa `agora`.
+        template = open("template.html", encoding="utf-8").read()
+        html = monta_pagina(_papel("BOVA11", 3), [], template)
+        assert re.search(r"\d{2}/\d{2}/\d{4} às \d{2}h\d{2}", html)

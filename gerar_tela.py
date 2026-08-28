@@ -18,6 +18,7 @@ Disciplina mantida do estudo: cortes de decil calculados só no treino, desvio-p
 embargo igual ao horizonte, e peneira de qualidade de dados antes de qualquer cálculo.
 """
 
+from datetime import datetime, timedelta, timezone          # carimbo de execução
 from pathlib import Path                                    # caminhos
 import sys                                                  # fluxo de saída único para a barra
 import numpy as np                                          # medidas
@@ -35,7 +36,13 @@ from nucleo.faixas import (add_dist_zscore, quantis_do_treino, atribui_faixa,
 # Marcadores que o template espera. Existe como constante para o teste poder garantir que nenhum
 # sobrou na página final — marcador não substituído é bug visível para quem lê.
 MARCADORES = ["TITULO_INDICE", "SUB_INDICE", "VEREDITO", "CLASSE_VEREDITO",
-              "REGUA", "MEDIDAS", "LINHAS", "BAIXAR_INDICE"]
+              "REGUA", "MEDIDAS", "LINHAS", "BAIXAR_INDICE", "CARIMBO"]
+
+# Fuso de Brasília como deslocamento FIXO, e não `ZoneInfo("America/Sao_Paulo")`: o Windows não traz
+# a base IANA, então `zoneinfo` puxaria o pacote `tzdata` para dentro do requirements só por causa
+# desta linha. O Brasil extinguiu o horário de verão em 2019, então UTC-3 vale o ano inteiro e a
+# simplificação não erra. Se o horário de verão voltar, é aqui que se conserta.
+FUSO_BRASILIA = timezone(timedelta(hours=-3))
 
 # Decis considerados "zona de viés observado" (os três mais afastados para baixo).
 ZONA = (0, 1, 2)
@@ -154,6 +161,30 @@ def _pct(v, casas=1, sinal=False):
     return txt.replace(".", ",") + "%"
 
 
+def _carimbo(agora=None):
+    """
+    Formata o instante da execução no horário de Brasília, como a página o exibe.
+
+    Por que existe: a tela é gerada por um robô e publicada sozinha, então quem abre a página não
+    tem como saber se está lendo o pregão de hoje ou uma publicação que travou há três dias. O
+    carimbo é a única parte da tela que o leitor pode conferir contra o próprio relógio.
+
+    Entrada: agora (datetime; `None` = o instante atual).
+    Fase 1: sem argumento, ler o relógio já no fuso de Brasília.
+    Fase 2: com argumento consciente de fuso, converter — o GitHub Actions roda em UTC, e sem esta
+            conversão a página anunciaria 21h34 para um fechamento das 18h34.
+    Saída: string no padrão brasileiro, "23/08/2026 às 18h34".
+    """
+    # Fase 1: o instante atual já nasce no fuso certo.
+    if agora is None:
+        agora = datetime.now(FUSO_BRASILIA)
+    # Fase 2: converter o que vier de outro fuso (datetime ingênuo é usado como está).
+    elif agora.tzinfo is not None:
+        agora = agora.astimezone(FUSO_BRASILIA)
+    # Saída: dia/mês/ano e hora no formato que se lê em voz alta em português.
+    return agora.strftime("%d/%m/%Y às %Hh%M")
+
+
 def _mini_regua(decil):
     """Dez quadradinhos com o decil atual aceso — a posição do papel lida de relance, não como número."""
     return "".join('<span class="on"></span>' if i == decil else "<span></span>"
@@ -203,7 +234,7 @@ def _link_download(ticker, compacto=False):
             f'title="planilha de estudo de {ticker}">↓ xlsx</a>')
 
 
-def monta_pagina(indice, papeis, template, top_n=config.DIST_TOP_N):
+def monta_pagina(indice, papeis, template, top_n=config.DIST_TOP_N, agora=None):
     """
     Preenche o template com os dados do índice e dos papéis, devolvendo o HTML final.
 
@@ -211,7 +242,9 @@ def monta_pagina(indice, papeis, template, top_n=config.DIST_TOP_N):
     testáveis — e é possível gerar a página inteira sem tocar na rede, o que os testes fazem.
 
     Entrada: indice (dict de `estado_de_hoje` do BOVA11 + chave "ticker"), papeis (lista de dicts
-    iguais), template (string com os marcadores de MARCADORES), top_n (quantos papéis exibir).
+    iguais), template (string com os marcadores de MARCADORES), top_n (quantos papéis exibir),
+    agora (instante do carimbo; `None` = agora, e é o que a publicação usa — o parâmetro existe
+    para o teste poder fixar o relógio).
     Fase 1: montar a leitura mestra — título, veredito, régua de dez segmentos e as cinco medidas.
     Fase 2: montar uma linha de tabela por papel em destaque.
     Fase 3: substituir os marcadores. Nenhum pode sobrar.
@@ -269,7 +302,8 @@ def monta_pagina(indice, papeis, template, top_n=config.DIST_TOP_N):
     valores = {"TITULO_INDICE": titulo, "SUB_INDICE": sub, "VEREDITO": veredito,
                "CLASSE_VEREDITO": classe_veredito, "REGUA": regua,
                "MEDIDAS": medidas, "LINHAS": "".join(linhas),
-               "BAIXAR_INDICE": _link_download(indice["ticker"])}
+               "BAIXAR_INDICE": _link_download(indice["ticker"]),
+               "CARIMBO": _carimbo(agora)}
     html = template
     for chave, valor in valores.items():
         html = html.replace("{{" + chave + "}}", valor)
