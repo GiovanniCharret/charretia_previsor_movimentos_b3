@@ -28,8 +28,13 @@ def add_dist_zscore(df, windows, vol_lag):
             barras — usa apenas passado e o próprio t, então não vaza futuro.
     Fase 2: dividir a dist pelo desvio; onde o desvio é 0 (série chapada), o resultado vira NaN
             para não gerar infinito.
-    Saída: o mesmo df, com uma coluna mma_dist_z_w{w} por janela.
+    Fase 3: concatenar todas as colunas **de uma vez**. Acrescentá-las uma a uma fragmentava a
+            estrutura interna do pandas e disparava `PerformanceWarning` na varredura de 145
+            janelas — corrigido em 07/09/2026.
+    Saída: um df novo, com uma coluna mma_dist_z_w{w} por janela.
     """
+    # Acumulador das colunas novas, na ordem das janelas pedidas.
+    novas = {}
     # Fase 1 e 2: uma coluna z por janela.
     for w in windows:
         # Coluna de distância contínua já produzida por build_features.
@@ -39,10 +44,12 @@ def add_dist_zscore(df, windows, vol_lag):
         # Desvio zero viraria divisão por zero → NaN explícito (linha descartada depois).
         desvio = desvio.replace(0.0, np.nan)
         # z = quantos desvios típicos a distância de hoje representa.
-        df[f"mma_dist_z_w{w}"] = dist / desvio
+        novas[f"mma_dist_z_w{w}"] = dist / desvio
+    # Fase 3: uma concatenação só, alinhada pelo índice (o mesmo, por construção).
+    if novas:
+        df = pd.concat([df, pd.DataFrame(novas, index=df.index)], axis=1)
     # Saída: df enriquecido.
     return df
-
 
 def quantis_do_treino(x, train_idx, n_faixas):
     """

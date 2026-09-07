@@ -26,6 +26,8 @@ import pandas as pd                                         # séries e datas
 from tqdm import tqdm                                       # barra de andamento dos ~70 downloads
 
 from nucleo import config                                   # parâmetros do estudo
+from publicacao import (barra_de_abas, copia_estatica,      # o que as 3 páginas dividem
+                        le_estado)
 from nucleo.data import load_prices                         # download (único ponto de rede)
 from nucleo.target import add_forward_returns               # alvos ret_{h}d
 from nucleo.features_mma import build_features              # distância até a média
@@ -36,7 +38,12 @@ from nucleo.faixas import (add_dist_zscore, quantis_do_treino, atribui_faixa,
 # Marcadores que o template espera. Existe como constante para o teste poder garantir que nenhum
 # sobrou na página final — marcador não substituído é bug visível para quem lê.
 MARCADORES = ["TITULO_INDICE", "SUB_INDICE", "VEREDITO", "CLASSE_VEREDITO",
-              "REGUA", "MEDIDAS", "LINHAS", "BAIXAR_INDICE", "CARIMBO"]
+              "REGUA", "MEDIDAS", "LINHAS", "BAIXAR_INDICE", "CARIMBO",
+              # Os dois últimos vieram com a segunda tela (07/09/2026): a barra de navegação, que
+              # `publicacao.barra_de_abas` monta igual para as três páginas, e a frase de rodapé que
+              # leva à tela de gatilhos — sem ela, a segunda página depende de o visitante reparar
+              # na barra de abas.
+              "ABAS", "TRAVESSIA"]
 
 # Fuso de Brasília como deslocamento FIXO, e não `ZoneInfo("America/Sao_Paulo")`: o Windows não traz
 # a base IANA, então `zoneinfo` puxaria o pacote `tzdata` para dentro do requirements só por causa
@@ -234,7 +241,36 @@ def _link_download(ticker, compacto=False):
             f'title="planilha de estudo de {ticker}">↓ xlsx</a>')
 
 
-def monta_pagina(indice, papeis, template, top_n=config.DIST_TOP_N, agora=None):
+def _travessia(n_alerta):
+    """
+    A frase de rodapé que aponta para a outra tela (helper de renderização).
+
+    Por que existe: sem um caminho explícito, a segunda página é inalcançável para quem não repara
+    na barra de abas. E a frase precisa dizer **por que** são duas páginas: aqui a escala é a mesma
+    para todos os papéis; lá cada papel tem o setup que o estudo aprovou para ele. São perguntas
+    diferentes, não duas versões da mesma.
+
+    Entrada: n_alerta (papéis com gatilho acionado hoje; None quando ainda não se mediu).
+    Fase 1: sem medida, apenas o convite — afirmar "nenhum gatilho" seria dizer o que não se sabe.
+    Fase 2: com medida, o número do dia, no singular ou no plural correto.
+    Saída: string com o HTML do parágrafo.
+    """
+    explica = ("É outra pergunta e outra medida: aqui a escala é a mesma para todos os papéis; lá "
+               "cada papel tem o setup que o estudo aprovou para ele.")
+    # Fase 1: ainda não medido.
+    if n_alerta is None:
+        return f"{explica} <a href='alertas.html'>Ver os gatilhos de proteção →</a>"
+    # Fase 2: medido e vazio, ou medido com gatilhos.
+    if n_alerta == 0:
+        return (f"<b>Nenhum gatilho de proteção acionado hoje</b> — o resultado esperado na maioria "
+                f"dos pregões. {explica} <a href='alertas.html'>Ver a tela de gatilhos →</a>")
+    pp = "papéis" if n_alerta > 1 else "papel"
+    return (f"<b>Hoje {n_alerta} {pp} acionaram gatilhos de proteção.</b> {explica} "
+            f"<a href='alertas.html'>Ver os gatilhos →</a>")
+
+
+def monta_pagina(indice, papeis, template, top_n=config.DIST_TOP_N, agora=None,
+                 estado=None):
     """
     Preenche o template com os dados do índice e dos papéis, devolvendo o HTML final.
 
@@ -299,11 +335,17 @@ def monta_pagina(indice, papeis, template, top_n=config.DIST_TOP_N, agora=None):
             f'</tr>')
 
     # Fase 3: substituir todos os marcadores.
+    # A barra e a travessia vêm do estado que `gerar_alertas.py` deixou. Ausência dele não é erro:
+    # a barra sai sem contador e a travessia sem número, que é o correto quando ainda não se mediu.
+    estado = estado or {}
+    n_alerta = estado.get("papeis_com_alerta")
     valores = {"TITULO_INDICE": titulo, "SUB_INDICE": sub, "VEREDITO": veredito,
                "CLASSE_VEREDITO": classe_veredito, "REGUA": regua,
                "MEDIDAS": medidas, "LINHAS": "".join(linhas),
                "BAIXAR_INDICE": _link_download(indice["ticker"]),
-               "CARIMBO": _carimbo(agora)}
+               "CARIMBO": _carimbo(agora),
+               "ABAS": barra_de_abas("triagem", n_alerta),
+               "TRAVESSIA": _travessia(n_alerta)}
     html = template
     for chave, valor in valores.items():
         html = html.replace("{{" + chave + "}}", valor)
@@ -388,7 +430,14 @@ def main() -> None:
     # Fase 4: montar e gravar.
     saida = aqui / "saida"; saida.mkdir(exist_ok=True)
     destino = saida / "index.html"
-    destino.write_text(monta_pagina(indice, papeis, template, config.DIST_TOP_N), encoding="utf-8")
+    # O estado vem de `gerar_alertas.py`, que roda antes no fluxo de publicação. Ausência não é
+    # erro: a barra sai sem contador, que é o correto quando ainda não se mediu.
+    estado = le_estado(saida)
+    destino.write_text(monta_pagina(indice, papeis, template, config.DIST_TOP_N, estado=estado),
+                       encoding="utf-8")
+    # Os estilos acompanham a página: ela os linka por caminho relativo, e sem a cópia o site sobe
+    # sem formatação nenhuma.
+    copia_estatica(aqui, saida)
 
     # Fase 5: uma planilha por papel VISÍVEL na tela — o índice mais os destaques da tabela. Os
     # aprovados que ficaram de fora da tabela não geram arquivo: a página não tem link para eles, e

@@ -6,3 +6,6 @@ __pycache__/
 # Gerada a cada execução: a página mais as planilhas de estudo. O GitHub Actions regenera e
 # publica; o repositório guarda só a receita.
 saida/
+
+# `estudo/` NÃO entra aqui: é o artefato exportado pelo laboratório e precisa ser versionado —
+# sem ele, `gerar_alertas.py` não roda no GitHub Actions. Ver "Proveniência do estudo" no README.

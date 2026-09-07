@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CharretIA — gatilhos de proteção</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;1,8..60,400&display=swap">
+<link rel="stylesheet" href="estilo.css">
+<link rel="stylesheet" href="estilo_componentes.css">
+</head>
+<body>
+<div class="env">
+
+  <header>
+    <div>
+      <div class="marca">Charret<span>IA</span></div>
+      <div class="rotulo" style="margin-top:6px">modelo de aprendizado de máquina com médias móveis</div>
+    </div>
+    <div class="carimbo">pregão de <b>{{DATA_PREGAO}}</b><br>{{N_PAPEIS}} papéis verificados</div>
+  </header>
+
+  {{ABAS}}
+
+  {{CORPO}}
+
+  <section class="glossario">
+    <div class="leitura">
+      <h2>Como ler</h2>
+      <dl>
+        <div class="verbete">
+          <dt>gatilho acionado</dt>
+          <dd>O fechamento de hoje caiu no <b>decil mais afastado para baixo</b> daquela média
+          móvel — o décimo dos pregões em que o preço esteve mais distante dela, medido em
+          desvios-padrão e não em porcentagem, para papéis voláteis e calmos serem comparáveis. O
+          corte vem de toda a história do papel, não dos últimos meses.</dd>
+        </div>
+        <div class="verbete">
+          <dt>proteção</dt>
+          <dd>Em que fração dos <b>episódios independentes</b> daquele setup o retorno seguinte saiu
+          positivo. Dias contíguos contam como um episódio só, porque seus retornos futuros se
+          sobrepõem. Não é previsão de tamanho: é frequência de não perder.</dd>
+        </div>
+        <div class="verbete">
+          <dt>limite inferior</dt>
+          <dd>O piso do intervalo de confiança de 95% da proteção. É por ele que os setups são
+          ordenados, e não pela proporção crua: crua, <em>dois acertos em dois episódios</em>
+          valeriam 100% e venceriam noventa episódios com 75%.</dd>
+        </div>
+        <div class="verbete">
+          <dt>taxa-base</dt>
+          <dd>A fração de dias <em>quaisquer</em> daquele papel em que o retorno seguinte foi
+          positivo — o que se conseguiria sem gatilho nenhum. É a régua contra a qual a proteção é
+          medida: um setup que protege menos que a própria taxa-base protege menos que não fazer
+          nada, e por isso nenhum deles aparece aqui.</dd>
+        </div>
+        <div class="verbete">
+          <dt>o número ao lado do papel (#31/61)</dt>
+          <dd>A colocação do papel no <b>ranking de qualidade da proteção</b>, entre os papéis
+          analisados. A ordem vem do limite inferior do melhor setup de cada papel, com os que têm
+          ao menos um setup acima da taxa-base à frente dos que não têm nenhum. É uma característica
+          do <em>papel</em>, não do gatilho de hoje.</dd>
+        </div>
+        <div class="verbete">
+          <dt>janela (faixa de janelas)</dt>
+          <dd>A média móvel de que veio o gatilho, em pregões. Quando um papel dispara, dispara em
+          várias médias vizinhas ao mesmo tempo — e médias vizinhas compartilham quase todos os
+          dados. Por isso elas aparecem <b>agrupadas numa faixa só</b>, escrita como intervalo: são
+          um gatilho, não vários. O número entre parênteses é quantas janelas a faixa reúne, e os
+          valores exibidos são os do melhor setup dela.</dd>
+        </div>
+        <div class="verbete">
+          <dt>período medido</dt>
+          <dd>Sobre que janela de tempo a taxa-base daquele papel foi medida. Nem toda época
+          sobrevive à peneira de qualidade, então dois papéis podem ter taxas-base apuradas em
+          períodos diferentes. Abaixo de três épocas, leia o resultado como <b>divisão única</b>, e
+          não como validação encadeada.</dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <div class="rodape leitura">
+    <p><a href="index.html">← Ver a triagem completa</a> ·
+    <a href="metodo.html">Como esta versão funciona →</a></p>
+  </div>
+
+</div>
+</body>
+</html>

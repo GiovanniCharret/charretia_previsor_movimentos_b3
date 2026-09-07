@@ -115,3 +115,81 @@ def avalia_qualidade(prices, min_pregoes=1000, min_volume_mm=5.0,
     return {"pregoes": n, "volume_financeiro_mediano": volume_financeiro,
             "fracao_preco_parado": fracao_parado, "volatilidade_anual": volatilidade,
             "treino_util": treino, "motivos": motivos, "aprovado": len(motivos) == 0}
+
+
+def apara_inicio(prices, janela=60, min_fracao_movimento=0.8):
+    """
+    Corta a cabeça da série anterior à listagem do papel, que o provedor preenche com valor fixo.
+
+    Por que existe: descoberto em 05/09/2026 na LREN3. Ela reprovava por "preço parado em 24% dos
+    dias" e a leitura óbvia — papel ilíquido — estava errada. Antes de 2005-12-01 a série tem
+    **volume zero** e **seis preços distintos em 1.303 pregões**: é o período ANTERIOR à listagem
+    na bolsa, que o provedor de dados preenche com uma constante. A empresa existia e negociava; o
+    papel é que não estava lá. Condenar o histórico inteiro por causa disso descarta vinte anos de
+    dados bons, e foi o que a peneira vinha fazendo.
+
+    O critério é o movimento do preço, não o volume, porque volume zero também aparece em pregões
+    legítimos sem negócio; preço que não anda por meses seguidos, não.
+
+    Entrada: prices (OHLCV), janela (tamanho da janela móvel que mede o movimento),
+    min_fracao_movimento (fração mínima de dias que precisam se mover para a série ser considerada
+    viva).
+    Fase 1: marcar os dias em que o fechamento mudou.
+    Fase 2: fração móvel desses dias; o primeiro ponto acima do limiar é onde a série ganha vida.
+    Fase 3: nenhuma janela viva → devolver a série inteira e deixar a peneira reprovar, que é a
+            resposta honesta (não cabe a esta função decidir que o papel é ruim).
+    Saída: DataFrame do mesmo formato, começando no primeiro dia vivo.
+    """
+    # Fase 1: dias em que o fechamento efetivamente mudou.
+    move = prices["Close"].diff() != 0
+    # Fase 2: fração móvel; `min_periods` evita que o começo saia NaN e esconda o corte.
+    fracao = move.rolling(janela, min_periods=janela).mean()
+    vivos = fracao[fracao > min_fracao_movimento]
+    # Fase 3: série que nunca ganha vida volta inteira, para a peneira decidir.
+    if vivos.empty:
+        return prices
+    # O corte recua a janela inteira: o primeiro ponto acima do limiar já olha para trás.
+    corte = prices.index.get_loc(vivos.index[0]) - janela + 1
+    # Saída: da primeira posição viva em diante.
+    return prices.iloc[max(0, corte):]
+
+
+def avalia_qualidade_por_divisao(prices, divisoes, **kwargs):
+    """
+    Avalia a qualidade dos dados DENTRO de cada divisão da validação encadeada, separadamente.
+
+    Por que existe: a peneira global aprova ou reprova o papel inteiro, e com isso esconde época
+    degradada. Descoberto em 05/09/2026: a GGBR4 tem 10,7% de dias com preço parado no total — passa
+    —, mas **34,6% entre 2006 e 2010**, que é exatamente a primeira divisão do estudo, e a que mais
+    contribuía com resultados favoráveis nos achados P, Q e R. Cinco episódios vindos de uma época
+    que a peneira reprovaria isolada valiam tanto quanto cinco episódios de dados limpos.
+
+    Descartar a divisão ruim, e não o papel, é o que preserva a história boa sem herdar a ruim.
+
+    Entrada: prices (OHLCV), divisoes (lista de pares (inicio, fim) das janelas de teste),
+    kwargs (repassados a `avalia_qualidade`, para os limiares serem os mesmos da peneira global).
+    Fase 1: para cada divisão, recortar o trecho correspondente.
+    Fase 2: rodar a peneira normal nesse trecho, sem as verificações que só fazem sentido na série
+            inteira (histórico mínimo e treino útil, que uma fatia de quatro anos nunca atenderia).
+    Fase 3: anexar as bordas da divisão ao resultado, para o relatório poder nomear a época.
+    Saída: lista de dicionários, um por divisão, na ordem em que foram passadas.
+    """
+    # Acumulador, um resultado por divisão.
+    fora = []
+    # Fase 1: cada divisão vira um recorte da série.
+    for inicio, fim in divisoes:
+        fatia = prices[(prices.index >= pd.Timestamp(inicio)) & (prices.index < pd.Timestamp(fim))]
+        # Divisão sem dados: reprovada com motivo explícito, em vez de quebrar.
+        if len(fatia) < 2:
+            fora.append({"inicio": inicio, "fim": fim, "aprovado": False,
+                         "motivos": ["divisão sem pregões"], "pregoes": len(fatia)})
+            continue
+        # Fase 2: a peneira normal, com o mínimo de pregões rebaixado ao tamanho da própria fatia —
+        # exigir 1.000 pregões de uma janela de quatro anos reprovaria todas por construção.
+        args = {"min_pregoes": 1, **kwargs}
+        r = avalia_qualidade(fatia, **args)
+        # Fase 3: identificar a época no resultado.
+        r["inicio"], r["fim"] = inicio, fim
+        fora.append(r)
+    # Saída: um resultado por divisão, na ordem de entrada.
+    return fora

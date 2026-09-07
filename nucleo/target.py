@@ -16,19 +16,27 @@ def add_forward_returns(df: pd.DataFrame, horizons: list[int]) -> pd.DataFrame:
        - Calcula ret_xd = Close[t+h] / Close[t] - 1 (retorno contínuo)
        - Usa shift(-h) para alinhar o preço futuro com a data atual
     3. NaN é garantido nas últimas h linhas (sem futuro conhecido)
-    4. Saída: DataFrame enriquecido com coluna ret_{h}d para cada h
+    4. Concatena todas as colunas de uma vez — acrescentá-las uma a uma fragmenta a estrutura
+       interna do pandas e, num DataFrame que já traz centenas de colunas de feature, dispara
+       `PerformanceWarning` (corrigido em 07/09/2026)
+    5. Saída: DataFrame enriquecido com coluna ret_{h}d para cada h
 
     Args:
         df: DataFrame com coluna "Close" (preços de fechamento)
         horizons: Lista de horizontes em dias (ex: [20, 45, 90])
 
     Returns:
-        DataFrame com as mesmas colunas + colunas ret_{h}d para cada horizonte
+        DataFrame novo com as mesmas colunas + colunas ret_{h}d para cada horizonte
     """
+    # Acumulador das colunas novas, na ordem dos horizontes pedidos
+    novas = {}
     # Iterar cada horizonte solicitado
     for h in horizons:
         # Calcular retorno contínuo: Close[t+h] / Close[t] - 1
         # shift(-h) desloca o preço h dias para trás (futuro aparece como presente)
-        df[f"ret_{h}d"] = df["Close"].shift(-h) / df["Close"] - 1.0
+        novas[f"ret_{h}d"] = df["Close"].shift(-h) / df["Close"] - 1.0
+    # Uma concatenação só, alinhada pelo índice (o mesmo, por construção)
+    if novas:
+        df = pd.concat([df, pd.DataFrame(novas, index=df.index)], axis=1)
     # Retornar DataFrame enriquecido (os últimos h valores de ret_{h}d são NaN automaticamente)
     return df

@@ -1,0 +1,117 @@
+/* ==============================================================================================
+   Componentes que o `estilo.css` ainda não cobria.
+
+   ⚠️ AS TRÊS PÁGINAS PRECISAM DESTE ARQUIVO. A barra de abas é definida aqui, e ela aparece em
+   todas — inclusive na triagem. O arquivo chamava-se `estilo_alertas.css` até 07/09/2026, e o nome
+   enganou: o `template.html` foi publicado sem o link, e a barra da página inicial saiu como uma
+   lista de links sublinhados grudados uns nos outros. Há teste que agora exige o link nas três.
+
+   Nenhuma cor, fonte ou medida é definida aqui — todas vêm das variáveis de `estilo.css`, que
+   continua sendo a fonte única do sistema visual.
+   ============================================================================================== */
+
+/* ---------- barra de abas (as três páginas) ----------
+   Fica ENTRE o cabeçalho e o conteúdo, e é ela que carrega a régua horizontal que antes pertencia
+   ao <header>. Assim a divisória continua existindo uma vez só, em vez de empilhar duas. */
+.abas { display:flex; gap:0; border-bottom:1px solid var(--rule-forte); flex-wrap:wrap; }
+.aba { display:flex; flex-direction:column; gap:3px; text-decoration:none;
+       padding:12px 20px 13px; margin-bottom:-1px; border-bottom:2px solid transparent; }
+.aba:first-child { padding-left:0; }
+.aba .n { font-family:var(--display); font-size:14px; font-weight:700; color:var(--ink-3);
+          letter-spacing:-0.005em; display:flex; align-items:center; gap:9px; }
+.aba .d { font-family:var(--serif); font-size:12.5px; color:var(--ink-3); }
+.aba:hover .n { color:var(--ink-2); }
+/* A página atual se distingue pelo `aria-current`, que já é o que anuncia isso a leitores de tela —
+   uma classe separada duplicaria a informação e poderia divergir dela. */
+.aba[aria-current="page"] { border-bottom-color:var(--acento); }
+.aba[aria-current="page"] .n { color:var(--ink); }
+.aba[aria-current="page"] .d { color:var(--ink-2); }
+
+/* O contador é o que faz as duas telas conviverem: da triagem dá para ver que HÁ gatilhos hoje sem
+   precisar visitar a outra página. Ele some no dia vazio — ver `publicacao.barra_de_abas`. */
+.selo { font-family:var(--mono); font-size:10.5px; font-weight:700; letter-spacing:0.02em;
+        padding:2px 7px; border-radius:2px; color:var(--surface); background:var(--acento);
+        line-height:1.6; }
+
+/* ---------- tabela de gatilhos ---------- */
+/* A qualificação do cabeçalho ("faixa de janelas") acompanha o rótulo sem competir com ele: mesma
+   linha, caixa baixa, peso menor. */
+thead th .sub2 { text-transform:none; letter-spacing:0; font-weight:400; opacity:.7; }
+/* A colocação do papel no ranking, ao lado do código: monoespaçada e apagada, porque é contexto e
+   não o dado principal da linha. */
+.posicao { font-family:var(--mono); font-size:11.5px; color:var(--ink-3); font-weight:400; }
+
+/* ---------- dia sem gatilho ----------
+   O caso comum. Deliberadamente SEM cor de alerta e SEM cor de acento: um dia sem gatilho não é um
+   evento, e pintá-lo sugeriria que algo aconteceu ou falhou. */
+.vazio { margin-top:26px; background:var(--surface); border:1px solid var(--rule);
+         border-left:3px solid var(--rule-forte); border-radius:3px; padding:38px 30px; }
+.vazio h1 { font-family:var(--display); font-weight:700; font-size:26px; margin:8px 0 10px;
+            letter-spacing:-0.02em; }
+.vazio p { font-family:var(--serif); font-size:15px; color:var(--ink-2); margin:0; max-width:62ch; }
+.vazio .atalho { margin-top:22px; }
+
+/* ---------- página de método: seletor de versão ----------
+   A lista é curta e vai crescer devagar, então uma coluna de cartões lê melhor que um menu
+   suspenso: todas as versões ficam visíveis de uma vez, que é metade do propósito da página. */
+.versoes { display:grid; gap:10px; margin-top:26px; }
+@media (min-width:760px) { .versoes { grid-template-columns:repeat(2,1fr); } }
+.cartao { text-align:left; font:inherit; cursor:pointer; background:var(--surface);
+          border:1px solid var(--rule); border-left:3px solid var(--rule-forte);
+          border-radius:3px; padding:18px 20px; display:grid; gap:6px; }
+.cartao:hover { border-color:var(--rule-forte); }
+.cartao[aria-pressed="true"] { border-left-color:var(--acento); }
+.cartao-topo { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+.cartao .v { font-family:var(--mono); font-size:12px; font-weight:700; color:var(--acento); }
+.cartao .t { font-family:var(--display); font-size:15px; font-weight:700; color:var(--ink);
+             letter-spacing:-0.01em; }
+.cartao .q { font-family:var(--serif); font-size:13.5px; color:var(--ink-2); margin:0; }
+.estado { font-family:var(--mono); font-size:9.5px; font-weight:700; letter-spacing:0.08em;
+          text-transform:uppercase; padding:3px 8px; border-radius:2px; white-space:nowrap; }
+.e-ativa { color:var(--forte); background:var(--forte-fundo);
+           border:1px solid color-mix(in srgb, var(--forte) 38%, transparent); }
+.e-mantida { color:var(--fraca); background:var(--fraca-fundo);
+             border:1px solid color-mix(in srgb, var(--fraca) 32%, transparent); }
+
+/* ---------- página de método: parâmetros ----------
+   É o bloco que torna uma versão reproduzível. Sem os valores exatos, "voltar para a versão
+   anterior" vira arqueologia de commit. */
+.params { margin-top:22px; background:var(--surface-2); border:1px solid var(--rule);
+          border-radius:3px; padding:18px 20px; }
+.params h3 { font-family:var(--display); font-size:10.5px; font-weight:700; letter-spacing:0.12em;
+             text-transform:uppercase; color:var(--ink-3); margin:0 0 12px; }
+.params dl { margin:0; display:grid; gap:0; grid-template-columns:1fr; }
+@media (min-width:700px) { .params dl { grid-template-columns:1fr 1fr; column-gap:30px; } }
+.params .par { display:flex; justify-content:space-between; gap:14px; align-items:baseline;
+               padding:7px 0; border-bottom:1px dotted var(--rule); }
+.params dt { font-family:var(--mono); font-size:11.5px; color:var(--ink-3); }
+.params dd { margin:0; font-family:var(--mono); font-size:12.5px; font-weight:700;
+             color:var(--ink); font-variant-numeric:tabular-nums; text-align:right; }
+
+/* ---------- página de método: o que mudou e como voltar ---------- */
+.mudou { margin-top:34px; background:var(--surface); border:1px solid var(--rule);
+         border-left:3px solid var(--moderada); border-radius:3px; padding:20px 24px; }
+.mudou h3 { font-family:var(--display); font-weight:700; font-size:13.5px; margin:0 0 10px;
+            color:var(--moderada); }
+.mudou ul { margin:0; padding-left:19px; }
+.mudou li { font-family:var(--serif); font-size:14.5px; color:var(--ink-2); margin-bottom:7px; }
+.mudou li:last-child { margin-bottom:0; }
+.mudou li b { font-family:var(--display); font-size:13px; font-weight:600; color:var(--ink); }
+.receita { margin-top:14px; background:var(--surface-2); border:1px solid var(--rule);
+           border-radius:3px; padding:16px 20px; }
+.receita h3 { font-family:var(--display); font-size:10.5px; font-weight:700; letter-spacing:0.12em;
+              text-transform:uppercase; color:var(--ink-3); margin:0 0 10px; }
+.receita pre { margin:0; overflow-x:auto; font-family:var(--mono); font-size:12px;
+               color:var(--ink-2); line-height:1.85; }
+.receita pre b { color:var(--acento); font-weight:700; }
+
+/* ---------- rodapé de travessia entre páginas ----------
+   Cada página termina apontando para as outras: sem isso, a segunda e a terceira são inalcançáveis
+   para quem não conhece a barra de abas. */
+.rodape { margin-top:34px; padding-top:20px; border-top:1px solid var(--rule); }
+.rodape p { font-family:var(--serif); font-size:14px; color:var(--ink-3); margin:0; max-width:70ch; }
+
+@media (max-width:620px) {
+  .aba { padding-left:0; padding-right:16px; }
+  .aba .d { display:none; }
+}

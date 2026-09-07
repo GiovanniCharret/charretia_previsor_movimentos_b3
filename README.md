@@ -2,41 +2,64 @@
 
 **No ar:** https://giovannicharret.github.io/charretia_previsor_movimentos_b3/
 
-Gera uma página estática com a posição de cada papel líquido da B3 na escala de afastamento da
-média móvel, e o que historicamente aconteceu depois de dias naquela posição. Publicada
-diariamente no GitHub Pages.
+Gera **três páginas estáticas**, publicadas diariamente no GitHub Pages:
+
+| página | pergunta que responde |
+|---|---|
+| `index.html` — **triagem** | onde cada papel líquido está hoje na escala de afastamento da média móvel, e o que historicamente aconteceu depois de dias naquela posição |
+| `alertas.html` — **gatilhos** | quais papéis fecharam hoje numa faixa que o estudo mediu como protetiva, com o setup aprovado para cada papel |
+| `metodo.html` — **método** | como cada versão da tela funciona, com que parâmetros, e como voltar a uma versão anterior |
+
+As duas primeiras convivem porque respondem perguntas diferentes: a triagem sempre tem os setenta
+papéis para mostrar; a de gatilhos fica **vazia na maioria dos pregões**, porque os episódios são
+raros por definição. Por isso a triagem é a página de entrada, e um contador na barra de abas avisa
+quando há gatilhos sem exigir que o visitante abra a outra página.
 
 Este repositório é a **publicação**. A pesquisa que o originou vive no repositório irmão
-[`robusta_backtest`](https://github.com/GiovanniCharret/robusta_backtest) — aqui não se mede nada
-novo, apenas se aplica o que já foi medido e validado fora da amostra.
+[`rebuild_robusta_backtests`](https://github.com/GiovanniCharret/robusta_backtest) — aqui não se
+mede nada novo, apenas se aplica o que já foi medido e validado fora da amostra.
 
 ## Arquivos
 
 | arquivo | papel |
 |---|---|
-| `gerar_tela.py` | o gerador: baixa, peneira, calcula o estado de hoje, grava a página e as planilhas |
-| `template.html` | a página com marcadores `{{...}}`; sem dependência externa além das fontes |
-| `tickers.csv` | os 70 papéis líquidos rastreados |
-| `nucleo/` | cópia do que a tela usa do laboratório (ver *Proveniência*) |
-| `saida/index.html` | resultado gerado |
-| `saida/dados/{TICKER}.xlsx` | uma planilha de estudo por papel visível na tela |
+| `gerar_tela.py` | gerador da **triagem**: baixa, peneira, calcula o estado de hoje, grava a página e as planilhas |
+| `gerar_alertas.py` | gerador dos **gatilhos**: cruza os setups aprovados com o fechamento de hoje |
+| `gerar_metodo.py` | gerador do **método**: não toca a rede, monta a página a partir de `versoes.py` |
+| `publicacao.py` | o que as três páginas dividem: a barra de abas, a cópia dos estilos e o estado do dia |
+| `versoes.py` | o **registro histórico** das versões: pergunta, parâmetros, passo a passo e receita de retorno |
+| `template*.html` | as três páginas com marcadores `{{...}}` |
+| `estilo.css`, `estilo_componentes.css` | o sistema visual e os componentes, ambos linkados pelas três páginas |
+| `tickers.csv` | os 70 papéis líquidos rastreados pela triagem |
+| `estudo/setups.csv` | os setups aprovados, **exportados pelo laboratório** (ver *Proveniência do estudo*) |
+| `nucleo/` | cópia do que as telas usam do laboratório (ver *Proveniência do núcleo*) |
+| `saida/*.html` | as três páginas geradas |
+| `saida/dados/{TICKER}.xlsx` | uma planilha de estudo por papel visível na triagem |
+| `saida/estado.json` | ligação entre geradores: quantos papéis dispararam hoje |
+
+**A ordem de execução importa.** `gerar_alertas.py` roda primeiro porque grava `saida/estado.json`,
+de onde as outras duas tiram o contador da barra de abas. Invertida a ordem, o site publica com o
+contador do dia anterior — ou sem contador nenhum na primeira execução.
 
 **O artefato publicado é a pasta `saida/` inteira**, não só o `index.html`: os botões de download
 apontam para `dados/` por caminho relativo e quebram se a pasta não subir junto. São 7 arquivos e
 cerca de 2 megabytes — a página, mais uma planilha por papel exibido (`DIST_TOP_N`, hoje 5) e uma
 do índice. `saida/` é gerada a cada execução e **não é versionada**.
 
-## Proveniência do `nucleo/` — leia antes de mexer
+## Proveniência do núcleo — leia antes de mexer
 
 A tela roda sozinha, então o que ela usa do laboratório está **copiado** aqui:
 
 | arquivo | origem em `robusta_backtest` |
 |---|---|
-| `data.py`, `target.py`, `features_mma.py`, `qualidade_dados.py` | `src/robusta_ml/`, cópia literal |
+| `data.py`, `target.py`, `features_mma.py` | `src/robusta_ml/`, cópia literal |
+| `qualidade_dados.py` | `src/robusta_ml/`, cópia literal — inclui `apara_inicio` e `avalia_qualidade_por_divisao`, do achado U |
 | `faixas.py` | cinco funções extraídas de `src/robusta_ml/extremos.py` (708 linhas, arrasta matplotlib) |
-| `config.py` | reescrito com as dez constantes que a tela lê, e só elas |
+| `config.py` | reescrito com as constantes que as telas leem, em dois blocos — um por versão |
 
-**Copiado do commit `e55455b48aca74c9742044815840472d0c310412`, em 23/08/2026.**
+**Copiado do commit `e55455b48aca74c9742044815840472d0c310412`, em 23/08/2026, e resincronizado em
+07/09/2026** (`qualidade_dados.py` recebeu as duas funções do achado U, sem as quais
+`gerar_alertas.py` não roda).
 
 O preço da cópia é a **deriva silenciosa**: alguém corrige o laboratório, a tela continua
 publicando o comportamento antigo, e nada avisa. Enquanto os dois repositórios estavam juntos, um
@@ -47,6 +70,41 @@ Ao mudar qualquer coisa em `robusta_ml/data.py`, `target.py`, `features_mma.py`,
 `qualidade_dados.py` ou nas cinco funções de faixa em `extremos.py`, recopie para cá e **atualize
 o commit de origem acima**. Nunca edite `nucleo/` diretamente: a correção se perderia na próxima
 recópia, e as duas versões divergiriam para sempre.
+
+## Proveniência do estudo — `estudo/setups.csv`
+
+A tela de gatilhos **não faz varredura nenhuma**. Ela lê `estudo/setups.csv`, gerado no laboratório
+por `robusta_ml.exporta_setups` e versionado aqui. O arquivo traz, por linha, um setup
+(papel, horizonte, janela) e — o que mais importa — o **corte do decil** daquele par (papel, janela),
+medido lá sobre a história completa.
+
+Por que o corte não é calculado aqui: a aplicação baixa só o necessário para o escore de hoje, uns
+dois anos. Estimar o corte com essa amostra foi tentado em 06/09/2026 e produziu um defeito grave —
+na GGBR4 com janela 200, o corte ia de **−2,010** (história completa) para **+0,465** (dois anos).
+Um corte positivo faria o "decil mais afastado para baixo" incluir dias com o preço *acima* da
+média. A divisão de trabalho é: **o laboratório baixa tudo e mede; a aplicação só lê e economiza.**
+
+`estudo/PROVENIENCIA.md` registra a data da exportação, o commit do laboratório que a produziu e se
+havia alterações não commitadas na ocasião. Para atualizar, a partir da raiz do laboratório:
+
+```powershell
+$env:PYTHONPATH="src"; uv run python -m robusta_ml.rank_protecao
+$env:PYTHONPATH="src"; uv run python -m robusta_ml.rank_protecao --cortes
+$env:PYTHONPATH="src"; uv run python -m robusta_ml.exporta_setups
+```
+
+O terceiro comando grava direto neste repositório. Como o `nucleo/`, é **sincronização manual**:
+nada avisa quando o laboratório avança e o arquivo aqui fica para trás.
+
+## Registro de versões — `versoes.py`
+
+`metodo.html` é gerada a partir de `versoes.py`, que guarda, por versão: a pergunta que ela
+responde, os parâmetros exatos, o passo a passo e — para as que não estão em produção — a receita
+de retorno. É o que torna um retorno a uma versão anterior possível sem arqueologia de commit.
+
+**Uma versão nova nasce quando um achado muda a pergunta, não quando um número muda de valor.**
+Recalibrações entram como nota na versão vigente. Sem esse critério, cada nova varredura viraria
+uma versão e o registro perde a serventia em poucos meses.
 
 ## Quais papéis a tabela mostra
 
@@ -84,13 +142,21 @@ pip install -r requirements.txt pytest
 # 1. Testes — offline, com preços sintéticos, não tocam a rede
 python -m pytest -q
 
-# 2. Gerar a página com dados reais (baixa ~70 papéis, leva alguns minutos).
-#    É o mesmo comando que o GitHub Actions roda.
-python gerar_tela.py
+# 2. Gerar as três páginas com dados reais. A ORDEM importa: `gerar_alertas.py` grava
+#    `saida/estado.json`, de onde as outras duas tiram o contador da barra de abas.
+#    São os mesmos comandos que o GitHub Actions roda.
+python gerar_alertas.py     # 61 papéis, ~1 minuto
+python gerar_tela.py        # 70 papéis, ~1 minuto
+python gerar_metodo.py      # sem rede, instantâneo
 
 # 3. Abrir e conferir
 start saida\index.html
 ```
+
+Qualquer gerador roda sozinho, para conferência rápida — `python gerar_alertas.py PRIO3` verifica um
+papel só. Fora da ordem acima, a barra de abas sai **sem contador**, que é o comportamento correto
+quando ainda não se mediu: inventar um zero afirmaria que não houve gatilho, o que é diferente de
+não saber.
 
 ## O que conferir antes de publicar
 

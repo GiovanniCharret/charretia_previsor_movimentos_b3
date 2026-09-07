@@ -1,110 +1,147 @@
+"""
+Construção das features derivadas da média móvel aritmética (mma).
+
+⚠️ **Todas as funções deste módulo DEVOLVEM colunas; nenhuma escreve no DataFrame recebido.**
+
+Por que assim, e não com `df[coluna] = valor` como antes: cada atribuição dessas insere um bloco
+novo na estrutura interna do pandas. Com 145 janelas por papel e quatro colunas por janela, eram
+quase seiscentas inserções, e o pandas passava a emitir `PerformanceWarning: DataFrame is highly
+fragmented` — o aviso não era cosmético: a varredura dos 61 papéis pagava por ele em tempo. Aqui as
+colunas são acumuladas num dicionário e **uma única concatenação** monta o DataFrame final.
+
+O efeito colateral bom da mudança: a média móvel de cada janela passou a ser calculada **uma vez**.
+Antes, `_add_continuous_columns` e `_add_trigger_columns` calculavam a mesma `rolling(w).mean()`
+cada um por sua conta — 145 janelas viravam 290 médias móveis por papel.
+"""
+
 import pandas as pd
 
 
-def _add_trigger_columns(df: pd.DataFrame, window: int, tol: float, persists: list[int]) -> pd.DataFrame:
+def _add_trigger_columns(df: pd.DataFrame, window: int, tol: float, persists: list[int],
+                         mma: pd.Series | None = None) -> dict[str, pd.Series]:
     """
-    Adiciona colunas de gatilho MMA (Média Móvel Simples) a um DataFrame.
+    Monta as colunas de gatilho da mma (estado, sinal e persistência) para uma janela e tolerância.
 
-    Por que existe: Transporta lógica de gatilho segura contra vazamento (state/signal/persist) do indicador
-    legado para o pipeline de ML. Gatilhos devem respeitar um limiar de tolerância e não podem emitir
-    inícios de sessão fantasmas no aquecimento (signal deve ver uma referência válida em t−1).
+    Por que existe: transporta a lógica de gatilho do indicador legado para o pipeline, com a trava
+    anti-vazamento que o legado não tinha. Um gatilho precisa respeitar a banda de tolerância e
+    **não pode emitir início de regime fantasma durante o aquecimento** — o `signal` exige uma
+    referência válida em t−1, senão o primeiro dia com média disponível apareceria como cruzamento.
 
-    Fases:
-    1. Calcula o valor da SMA (mma_w{window}) como a média móvel de Close.
-    2. Determina state: booleano above = Close > mma * (1 + tol), convertido para Int8.
-    3. Detecta signal genuíno: cruzamento acima requer above AND NOT above[t-1] AND referência válida em t-1.
-    4. Calcula streak: conta dias consecutivos em state a partir de cada mudança de regime.
-    5. Para cada k em persists: dispara no k-ésimo dia após o início (one-shot), usando streak e signal deslocado.
+    Entrada: df (com a coluna `Close`), window, tol, persists, mma (a média móvel já calculada;
+    quando ausente, é calculada aqui — o parâmetro existe para `build_features` não recalcular).
+    Fase 1: a média móvel da janela, reaproveitada quando já vem pronta.
+    Fase 2: estado — o fechamento acima da média corrigida pela tolerância.
+    Fase 3: sinal — cruzamento genuíno: está acima, não estava em t−1, e havia referência em t−1.
+    Fase 4: sequência de dias consecutivos no mesmo estado, para a persistência saber a idade dele.
+    Fase 5: persistência — dispara **uma vez**, no k-ésimo dia após um início genuíno.
+    Saída: dicionário {nome da coluna: série}, na ordem em que devem entrar no DataFrame.
     """
-    # Fase 1: Calcula o valor da coluna SMA.
-    vcol = f"mma_w{window}"
-    df[vcol] = df["Close"].rolling(window).mean()
+    # Fase 1: a média móvel. Vem pronta de `build_features`; calculada aqui só em uso avulso.
+    if mma is None:
+        mma = df["Close"].rolling(window).mean()
 
-    # Fase 2: Determina state (acima do limiar de tolerância).
-    above = df["Close"] > df[vcol] * (1 + tol)
-    df[f"mma_state_w{window}_t{tol}"] = above.astype("Int8")
+    # Fase 2: estado — acima da média, respeitada a banda de tolerância.
+    above = df["Close"] > mma * (1 + tol)
 
-    # Fase 3: Detecta signal genuíno (cruzamento acima com referência válida em t-1, sem fantasma no aquecimento).
-    cross = above & ~above.shift(1, fill_value=False) & df[vcol].notna().shift(1, fill_value=False)
-    df[f"mma_signal_w{window}_t{tol}"] = cross.astype("Int8")
+    # Fase 3: sinal genuíno. As três condições juntas é que evitam o fantasma de aquecimento: a
+    # terceira exige que a média já existisse em t−1, senão o primeiro dia válido viraria início.
+    cross = above & ~above.shift(1, fill_value=False) & mma.notna().shift(1, fill_value=False)
 
-    # Fase 4: Calcula streak (conta dias consecutivos em state).
+    # Fase 4: quantos dias consecutivos no estado atual. O agrupamento por mudança de regime
+    # reinicia a contagem a cada virada.
     streak = above.groupby((above != above.shift()).cumsum()).cumcount() + 1
 
-    # Fase 5: Dispara persist no k-ésimo dia após o início (one-shot).
+    # As colunas desta combinação, na ordem de leitura.
+    colunas = {
+        f"mma_state_w{window}_t{tol}": above.astype("Int8"),
+        f"mma_signal_w{window}_t{tol}": cross.astype("Int8"),
+    }
+
+    # Fase 5: uma coluna de persistência por k pedido.
     for k in persists:
-        # Ignora valores k não-positivos.
+        # k não-positivo não descreve persistência nenhuma.
         if k <= 0:
             continue
-        # Dispara quando: ainda em state, streak é k+1 (k dias após o início), e o início aconteceu k dias atrás.
+        # Dispara quando: ainda no estado, a sequência tem k+1 dias, e o início foi há exatamente k
+        # dias. As três juntas tornam o disparo único por episódio, e não repetido enquanto durar.
         fires = above & (streak == k + 1) & cross.shift(k, fill_value=False)
-        df[f"mma_persist_w{window}_t{tol}_k{k}"] = fires.astype("Int8")
+        colunas[f"mma_persist_w{window}_t{tol}_k{k}"] = fires.astype("Int8")
 
-    # Saída: df-fundação enriquecido com as colunas de gatilho.
-    return df
+    # Saída: as colunas, sem tocar no DataFrame recebido.
+    return colunas
 
 
-def _add_continuous_columns(df: pd.DataFrame, window: int, slope_lag: int) -> pd.DataFrame:
+def _add_continuous_columns(df: pd.DataFrame, window: int, slope_lag: int,
+                            mma: pd.Series | None = None) -> dict[str, pd.Series]:
     """
-    Adiciona features contínuas de MMA (distância e inclinação) a um DataFrame.
+    Monta as colunas contínuas da mma (distância e inclinação) para uma janela.
 
-    Por que existe: Features contínuas complementam os gatilhos ao capturar o momentum dos preços
-    relativo à MMA (distância ao limiar) e a aceleração da MMA (inclinação). Elas formam o espaço
-    de entrada da regressão.
+    Por que existe: as contínuas complementam os gatilhos. O gatilho diz "está acima"; a distância
+    diz **quanto** acima, e a inclinação diz se a própria média está subindo. Juntas formam o espaço
+    de entrada da regressão — e a distância é a que sustenta toda a linha da proteção.
 
-    Fases:
-    1. Calcula ou reutiliza a coluna de valor SMA (mma_w{window}).
-    2. Calcula distância como Close/mma - 1 (quão longe do limiar, proporcional).
-    3. Calcula inclinação como mma/mma.shift(slope_lag) - 1 (taxa de mudança da MMA).
-    4. Retorna o DataFrame enriquecido.
+    As duas são razões, e não diferenças em reais, de propósito: assim são comparáveis entre papéis
+    de preços muito diferentes, o que é o que permite empilhar papéis num painel único.
+
+    Entrada: df (com `Close`), window, slope_lag, mma (média já calculada; ausente, calcula aqui).
+    Fase 1: a média móvel da janela, reaproveitada quando já vem pronta.
+    Fase 2: distância — fechamento sobre média, menos um.
+    Fase 3: inclinação — média sobre ela mesma `slope_lag` pregões atrás, menos um.
+    Saída: dicionário {nome da coluna: série}, incluindo a própria média (que é valor, não feature).
     """
-    # Fase 1: Calcula ou reutiliza a coluna de valor SMA.
-    vcol = f"mma_w{window}"
-    if vcol not in df:
-        df[vcol] = df["Close"].rolling(window).mean()
-    # Fase 2: Calcula distância (Close / mma - 1).
-    df[f"mma_dist_w{window}"] = df["Close"] / df[vcol] - 1.0
-    # Fase 3: Calcula inclinação (mma / mma.shift(slope_lag) - 1).
-    df[f"mma_slope_w{window}"] = df[vcol] / df[vcol].shift(slope_lag) - 1.0
-    # Fase 4: Retorna o DataFrame enriquecido.
-    return df
+    # Fase 1: a média móvel.
+    if mma is None:
+        mma = df["Close"].rolling(window).mean()
+    # Fase 2 e 3: as duas razões. A média entra no dicionário porque o DataFrame a exibe para
+    # conferência linha a linha, mas `build_features` a mantém FORA da lista de features.
+    return {
+        f"mma_w{window}": mma,
+        f"mma_dist_w{window}": df["Close"] / mma - 1.0,
+        f"mma_slope_w{window}": mma / mma.shift(slope_lag) - 1.0,
+    }
 
 
-def build_features(df: pd.DataFrame, windows: list[int], tols: list[float], persists: list[int], slope_lag: int = 5) -> tuple[pd.DataFrame, list[str]]:
+def build_features(df: pd.DataFrame, windows: list[int], tols: list[float], persists: list[int],
+                   slope_lag: int = 5) -> tuple[pd.DataFrame, list[str]]:
     """
-    Orchestrate feature construction: continuous columns + trigger columns over all window×tol×persist combos.
+    Monta o conjunto completo de features da mma e devolve o DataFrame enriquecido.
 
-    Why: This function assembles the complete ML feature set from MMA by coordinating two helpers
-    (_add_continuous_columns, _add_trigger_columns) and collecting the resulting feature names,
-    excluding value columns (mma_w{w}) and OHLCV (Close).
+    Por que existe: coordena os dois auxiliares sobre todas as combinações de janela, tolerância e
+    persistência, e devolve os nomes das features — excluindo as colunas de valor (`mma_w{w}`) e o
+    OHLCV, que estão no DataFrame para inspeção mas não entram no modelo.
 
-    Phases:
-    1. Inicializar lista vazia de feature names.
-    2. Para cada janela (window): chamar _add_continuous_columns e anotar dist/slope.
-    3. Para cada tolerância (tol): chamar _add_trigger_columns e anotar state/signal/persist(k>0).
-    4. Retornar (df enriquecido, feature_cols com todos os nomes exceto value e Close).
+    Por que uma concatenação só, no fim: acrescentar coluna a coluna fragmenta a estrutura interna
+    do pandas e faz o custo crescer com o quadrado do número de colunas. Com 145 janelas o aviso
+    `DataFrame is highly fragmented` aparecia a cada papel da varredura.
 
-    Saída: (df enriquecido, lista de colunas de feature).
+    Entrada: df (OHLCV com `Close`), windows, tols, persists, slope_lag.
+    Fase 1: para cada janela, calcular a média móvel **uma vez** e derivar dela as contínuas.
+    Fase 2: para cada tolerância daquela janela, derivar os gatilhos da mesma média.
+    Fase 3: concatenar tudo de uma vez ao DataFrame recebido.
+    Saída: (DataFrame enriquecido, lista de nomes das features).
     """
-    # Fase 1: Inicializar lista de feature names.
-    feats = []
-    # Fase 2: Para cada janela, adicionar contínuas (dist, slope).
+    # Acumuladores: as colunas novas, na ordem de criação, e os nomes que são feature.
+    novas: dict[str, pd.Series] = {}
+    feats: list[str] = []
+
+    # Fase 1: cada janela, com a média móvel calculada uma única vez.
     for w in windows:
-        # Chamar helper para adicionar colunas contínuas.
-        _add_continuous_columns(df, window=w, slope_lag=slope_lag)
-        # Anotar os nomes das features contínuas.
+        mma = df["Close"].rolling(w).mean()
+        novas.update(_add_continuous_columns(df, window=w, slope_lag=slope_lag, mma=mma))
+        # A média em si é valor, não feature — só a distância e a inclinação entram.
         feats += [f"mma_dist_w{w}", f"mma_slope_w{w}"]
-        # Fase 3: Para cada tolerância, adicionar gatilhos (state, signal, persist).
+
+        # Fase 2: cada tolerância, sobre a mesma média.
         for tol in tols:
-            # Chamar helper para adicionar colunas de gatilho.
-            _add_trigger_columns(df, window=w, tol=tol, persists=persists)
-            # Anotar state e signal.
-            feats.append(f"mma_state_w{w}_t{tol}")
-            feats.append(f"mma_signal_w{w}_t{tol}")
-            # Anotar persist apenas para k > 0.
-            for k in persists:
-                # Só incluir k > 0 (conforme brief: "exclui valor e OHLCV").
-                if k > 0:
-                    feats.append(f"mma_persist_w{w}_t{tol}_k{k}")
-    # Saída: (df enriquecido, lista de feature names).
+            gatilhos = _add_trigger_columns(df, window=w, tol=tol, persists=persists, mma=mma)
+            novas.update(gatilhos)
+            # Os nomes saem do próprio dicionário: assim a lista de features não pode divergir das
+            # colunas efetivamente criadas, que era um par de listas para manter em sincronia.
+            feats += list(gatilhos)
+
+    # Fase 3: uma concatenação só. `axis=1` alinha pelo índice, que é o mesmo por construção.
+    if novas:
+        df = pd.concat([df, pd.DataFrame(novas, index=df.index)], axis=1)
+
+    # Saída: DataFrame enriquecido e os nomes das features.
     return df, feats

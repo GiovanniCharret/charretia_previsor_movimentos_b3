@@ -1,0 +1,244 @@
+/* ==============================================================================================
+   Estilo comum às páginas do site.
+   Extraído do bloco <style> de `template.html` em 07/09/2026, sem alteração de conteúdo: com três
+   páginas, manter o bloco embutido significaria três cópias que divergem na primeira mudança de
+   cor. As páginas agora linkam este arquivo.
+   ============================================================================================== */
+
+:root {
+  /* neutros com viés azul-esverdeado — escolhidos, não herdados */
+  --ground:#EEF2F1; --surface:#FFFFFF; --surface-2:#F6F9F8;
+  --ink:#0F1719; --ink-2:#43514F; --ink-3:#75837F;
+  --rule:#D6DEDB; --rule-forte:#B9C4C0;
+  /* acento: leitura de instrumento */
+  --acento:#1F7A6B; --acento-fundo:#E4F0ED;
+  /* escala semântica = FORÇA DA EVIDÊNCIA (sequencial), não direção */
+  --forte:#1F7A6B;   --forte-fundo:#E4F0ED;
+  --moderada:#966B14; --moderada-fundo:#F6EEDC;
+  --fraca:#6E7B78;   --fraca-fundo:#EBEFEE;
+  --alerta:#9C4335;  --alerta-fundo:#F7E9E6;
+  --display:"Archivo", "Helvetica Neue", Arial, sans-serif;
+  --serif:"Source Serif 4", Georgia, "Times New Roman", serif;
+  --mono:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:#0E1417; --surface:#161E21; --surface-2:#1B2529;
+    --ink:#E6ECEA; --ink-2:#A8B6B2; --ink-3:#7C8A86;
+    --rule:#25322F; --rule-forte:#33433F;
+    --acento:#4FBFA8; --acento-fundo:#14302B;
+    --forte:#4FBFA8;   --forte-fundo:#14302B;
+    --moderada:#D3A34A; --moderada-fundo:#2E2617;
+    --fraca:#8B9995;   --fraca-fundo:#1E2729;
+    --alerta:#D6796A;  --alerta-fundo:#2E1A16;
+  }
+}
+:root[data-theme="dark"] {
+  --ground:#0E1417; --surface:#161E21; --surface-2:#1B2529;
+  --ink:#E6ECEA; --ink-2:#A8B6B2; --ink-3:#7C8A86;
+  --rule:#25322F; --rule-forte:#33433F;
+  --acento:#4FBFA8; --acento-fundo:#14302B;
+  --forte:#4FBFA8;   --forte-fundo:#14302B;
+  --moderada:#D3A34A; --moderada-fundo:#2E2617;
+  --fraca:#8B9995;   --fraca-fundo:#1E2729;
+  --alerta:#D6796A;  --alerta-fundo:#2E1A16;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--ground); color:var(--ink);
+       font-family:var(--display); font-weight:500; line-height:1.5;
+       -webkit-font-smoothing:antialiased; }
+.env { max-width:1080px; margin:0 auto; padding:0 20px 64px; }
+:focus-visible { outline:2px solid var(--acento); outline-offset:2px; border-radius:2px; }
+
+/* ---------- cabeçalho ---------- */
+header { display:flex; align-items:flex-end; justify-content:space-between;
+         gap:20px; flex-wrap:wrap; padding:34px 0 20px; border-bottom:1px solid var(--rule-forte); }
+.marca { font-family:var(--display); font-weight:700; font-size:19px; letter-spacing:-0.01em; }
+.marca span { color:var(--acento); }
+.carimbo { font-family:var(--mono); font-size:11.5px; color:var(--ink-3);
+           text-align:right; line-height:1.7; }
+.carimbo b { color:var(--ink-2); font-weight:500; }
+
+/* ---------- leitura mestra ---------- */
+.mestra { background:var(--surface); border:1px solid var(--rule);
+          border-radius:3px; margin-top:26px; padding:26px 28px; }
+.rotulo { font-family:var(--display); font-size:10.5px; font-weight:700;
+          letter-spacing:0.13em; text-transform:uppercase; color:var(--ink-3); }
+.mestra-topo { display:flex; gap:26px; align-items:flex-start; flex-wrap:wrap;
+               justify-content:space-between; }
+.mestra h1 { font-family:var(--display); font-weight:700; font-size:31px; margin:10px 0 4px;
+             letter-spacing:-0.02em; text-wrap:balance; }
+.mestra .sub { font-family:var(--serif); font-size:15.5px; color:var(--ink-2);
+               max-width:56ch; margin:0; }
+.veredito { font-family:var(--mono); font-size:11.5px; font-weight:700; letter-spacing:0.06em;
+            text-transform:uppercase; padding:7px 13px; border-radius:2px; white-space:nowrap;
+            color:var(--fraca); background:var(--fraca-fundo);
+            border:1px solid color-mix(in srgb, var(--fraca) 35%, transparent); }
+/* quando o próprio índice está na zona de viés, o veredito muda de tom — é o único
+   estado em que a tela tem algo a dizer, e precisa se distinguir do "sem sinal". */
+.veredito.v-zona { color:var(--acento); background:var(--acento-fundo);
+                   border-color:color-mix(in srgb, var(--acento) 45%, transparent); }
+
+/* ---------- baixar a planilha de estudo ---------- */
+/* Utilitário, não chamada para ação: fica em tom apagado ao lado do que de fato importa na
+   leitura, e só ganha contraste no ponteiro ou no foco de teclado. */
+.baixar { font-family:var(--mono); font-size:10.5px; font-weight:600; letter-spacing:0.04em;
+          text-transform:uppercase; text-decoration:none; white-space:nowrap;
+          display:inline-block; padding:6px 10px; border-radius:2px;
+          color:var(--ink-3); border:1px solid var(--rule); }
+.baixar:hover { color:var(--ink); border-color:var(--rule-forte); background:var(--surface-2); }
+/* NÃO renomear para `.mini`: esse nome já pertence à régua de decis (abaixo), e a colisão
+   faria o botão herdar o grid de dez colunas dela. */
+.baixar.compacto { padding:3px 7px; font-size:9.5px; letter-spacing:0.02em; }
+/* A pilha do veredito: o selo em cima, o download embaixo, alinhados à direita para não
+   competir com o título à esquerda. */
+.veredito-pilha { display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
+
+/* ---------- régua de decis ---------- */
+.regua { margin-top:24px; }
+.regua-barra { display:grid; grid-template-columns:repeat(10,1fr); gap:3px; }
+.seg { height:34px; border-radius:1px; background:var(--surface-2);
+       border:1px solid var(--rule); position:relative; }
+.seg.zona { background:var(--acento-fundo); border-color:color-mix(in srgb, var(--acento) 30%, transparent); }
+.seg.aqui { background:var(--acento); border-color:var(--acento); }
+.seg i { position:absolute; inset:auto 0 5px; text-align:center; font-style:normal;
+         font-family:var(--mono); font-size:10px; color:var(--ink-3); }
+.seg.aqui i { color:var(--surface); font-weight:700; }
+.regua-pes { display:flex; justify-content:space-between; margin-top:8px;
+             font-family:var(--mono); font-size:10.5px; color:var(--ink-3); }
+
+.medidas { display:flex; gap:0; flex-wrap:wrap; margin-top:22px;
+           border-top:1px solid var(--rule); }
+.medida { flex:1 1 128px; padding:14px 16px 2px 0; }
+.medida .v { font-family:var(--mono); font-size:22px; font-weight:700;
+             font-variant-numeric:tabular-nums; letter-spacing:-0.02em; }
+.medida .k { font-family:var(--display); font-size:10px; font-weight:600; letter-spacing:0.1em;
+             text-transform:uppercase; color:var(--ink-3); margin-top:3px; }
+
+/* ---------- faixa da tese ---------- */
+.tese { margin-top:14px; background:var(--moderada-fundo);
+        border:1px solid color-mix(in srgb, var(--moderada) 40%, transparent);
+        border-radius:3px; padding:20px 24px; display:flex; gap:20px; flex-wrap:wrap; }
+.tese .n { font-family:var(--mono); font-size:30px; font-weight:700; color:var(--moderada);
+           line-height:1; font-variant-numeric:tabular-nums; }
+.tese .txt { flex:1 1 420px; }
+.tese h2 { font-family:var(--display); font-weight:700; font-size:15px; margin:0 0 7px;
+           color:var(--moderada); letter-spacing:0.01em; }
+.tese p { font-family:var(--serif); font-size:14.5px; color:var(--ink-2); margin:0; max-width:68ch; }
+.tese p b { color:var(--ink); font-weight:400; font-style:italic; }
+
+/* ---------- tabela ---------- */
+.secao { display:flex; align-items:baseline; gap:14px; margin:38px 0 4px; flex-wrap:wrap; }
+.secao h2 { font-family:var(--display); font-weight:700; font-size:17px; margin:0;
+            letter-spacing:-0.01em; }
+.secao .nota { font-family:var(--serif); font-size:14px; color:var(--ink-3); }
+.quadro { background:var(--surface); border:1px solid var(--rule); border-radius:3px;
+          overflow-x:auto; margin-top:12px; }
+/* Quando a tabela não cabe, ela é cortada rente à borda e nada indica que há mais para o lado —
+   foi assim que a coluna de download passou por inexistente. O aviso aparece só na faixa de
+   largura em que a rolagem existe de verdade — 981px, medido por busca binária no navegador. */
+.dica-rolagem { display:none; }
+@media (max-width:981px) {
+  .dica-rolagem { display:block; font-family:var(--mono); font-size:11px; color:var(--ink-3);
+                  margin:8px 0 0; }
+}
+table { width:100%; border-collapse:collapse; min-width:820px; }
+thead th { font-family:var(--display); font-size:9.5px; font-weight:700; letter-spacing:0.1em;
+           text-transform:uppercase; color:var(--ink-3); text-align:right; padding:13px 8px;
+           border-bottom:1px solid var(--rule-forte); white-space:nowrap; }
+thead th:first-child, thead th.esq { text-align:left; }
+/* Espaçamento horizontal enxuto (8px, não 12px): com dez colunas, os 4px a mais de cada lado
+   somavam 80px e empurravam a coluna de download para fora da tela em telas de 1024px. */
+tbody td { padding:13px 8px; border-bottom:1px solid var(--rule); text-align:right;
+           font-family:var(--mono); font-size:13px; font-variant-numeric:tabular-nums;
+           color:var(--ink-2); }
+tbody tr:last-child td { border-bottom:none; }
+tbody td.esq { text-align:left; }
+/* Colunas numéricas nunca quebram: "+11,0 pp" em duas linhas é ilegível. A moldura já rola na
+   horizontal, então o custo de manter tudo numa linha é rolagem, não texto partido. */
+tbody td:not(.esq) { white-space:nowrap; }
+tbody tr:hover td { background:var(--surface-2); }
+.papel { font-family:var(--display); font-weight:700; font-size:14px; color:var(--ink);
+         letter-spacing:0.01em; }
+.destaque { color:var(--ink); font-weight:700; }
+
+/* mini-régua na linha */
+.mini { display:inline-grid; grid-template-columns:repeat(10,7px); gap:1.5px; vertical-align:-3px; }
+.mini span { height:15px; background:var(--surface-2); border:1px solid var(--rule); border-radius:1px; }
+.mini span.on { background:var(--acento); border-color:var(--acento); }
+
+.chip { display:inline-block; font-family:var(--display); font-size:10px; font-weight:700;
+        letter-spacing:0.07em; text-transform:uppercase; padding:4px 9px; border-radius:2px;
+        white-space:nowrap; }
+.c-forte { color:var(--forte); background:var(--forte-fundo);
+           border:1px solid color-mix(in srgb, var(--forte) 38%, transparent); }
+.c-moderada { color:var(--moderada); background:var(--moderada-fundo);
+              border:1px solid color-mix(in srgb, var(--moderada) 38%, transparent); }
+.c-fraca { color:var(--fraca); background:var(--fraca-fundo);
+           border:1px solid color-mix(in srgb, var(--fraca) 32%, transparent); }
+.c-alerta { color:var(--alerta); background:var(--alerta-fundo);
+            border:1px solid color-mix(in srgb, var(--alerta) 40%, transparent); }
+tr.marcada td { background:color-mix(in srgb, var(--acento-fundo) 55%, transparent); }
+tr.marcada:hover td { background:var(--acento-fundo); }
+
+.aviso-linha { font-family:var(--serif); font-size:12.5px; color:var(--alerta);
+               font-style:italic; }
+
+/* ---------- coluna de leitura ----------
+   A tabela acima precisa de toda a largura; o texto corrido, não. Uma medida de ~65 caracteres
+   é o limite de legibilidade, então a coluna é CENTRADA em vez de encostada à esquerda — assim
+   o espaço que sobra fica simétrico e a composição lê como deliberada, não como caixa vazia. */
+.leitura { max-width:760px; margin-left:auto; margin-right:auto; }
+
+/* ---------- glossário das colunas ---------- */
+.glossario { margin-top:40px; border-top:2px solid var(--rule-forte); padding-top:22px; }
+.glossario h2, .modelo h2 { font-family:var(--display); font-weight:700; font-size:15px;
+                            margin:0 0 16px; letter-spacing:0.01em; }
+.glossario dl { margin:0; display:grid; gap:2px; }
+.verbete { display:grid; grid-template-columns:190px 1fr; gap:22px;
+           padding:14px 0; border-top:1px solid var(--rule); }
+.verbete:first-child { border-top:none; padding-top:0; }
+.verbete dt { font-family:var(--display); font-size:10.5px; font-weight:700; letter-spacing:0.1em;
+              text-transform:uppercase; color:var(--acento); padding-top:2px; }
+/* sem max-width em ch: a coluna .leitura já impõe a medida, e um segundo limite deixaria
+   espaço morto dentro de um bloco que já está no tamanho certo. */
+.verbete dd { margin:0; font-family:var(--serif); font-size:14.5px; color:var(--ink-2); }
+.verbete dd b { font-family:var(--display); font-size:13px; font-weight:600; color:var(--ink); }
+.verbete dd b.cuidado { color:var(--alerta); }
+.verbete dd em { font-style:italic; }
+.escala { display:block; margin-top:9px; font-size:13.5px; }
+.escala .chip { margin-right:9px; }
+
+/* ---------- como o modelo funciona ---------- */
+.modelo { margin-top:40px; border-top:2px solid var(--rule-forte); padding-top:22px; }
+.chamada { font-family:var(--serif); font-size:15.5px; font-style:italic; color:var(--ink-3);
+           margin:0 0 22px; }
+.passos { margin:0; padding:0; list-style:none; counter-reset:passo; display:grid; gap:26px; }
+.passos > li { counter-increment:passo; display:grid; grid-template-columns:38px 1fr; gap:18px; }
+.passos > li::before { content:counter(passo); font-family:var(--mono); font-size:15px;
+                       font-weight:700; color:var(--surface); background:var(--acento);
+                       width:30px; height:30px; border-radius:2px; display:grid;
+                       place-items:center; }
+.passos h3 { font-family:var(--display); font-weight:700; font-size:15.5px; margin:4px 0 8px;
+             letter-spacing:-0.005em; text-wrap:balance; }
+.passos p { font-family:var(--serif); font-size:14.5px; color:var(--ink-2); margin:0 0 9px; }
+.passos p:last-child { margin-bottom:0; }
+.passos p b { font-family:var(--display); font-size:13px; font-weight:600; color:var(--ink); }
+
+/* A caixa final tem DOIS assuntos independentes, então ela é o lugar certo para gastar a
+   largura que sobra: lado a lado em tela larga, empilhados no celular. */
+.caixa-nota { margin-top:28px; background:var(--surface); border:1px solid var(--rule);
+              border-left:3px solid var(--acento); border-radius:3px; padding:22px 26px;
+              display:grid; gap:24px; }
+.caixa-nota h3 { font-family:var(--display); font-weight:700; font-size:13.5px; margin:0 0 8px;
+                 letter-spacing:0.01em; }
+.caixa-nota p { font-family:var(--serif); font-size:14.5px; color:var(--ink-2); margin:0; }
+.caixa-nota p b { font-family:var(--display); font-size:13px; font-weight:600; color:var(--ink); }
+
+@media (min-width:700px) {
+  .caixa-nota { grid-template-columns:1fr 1fr; gap:32px; align-items:start; }
+}
+@media (max-width:620px) {
+  .verbete { grid-template-columns:1fr; gap:6px; }
+  .passos > li { grid-template-columns:1fr; gap:8px; }
+}

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CharretIA — método e versões</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;1,8..60,400&display=swap">
+<link rel="stylesheet" href="estilo.css">
+<link rel="stylesheet" href="estilo_componentes.css">
+<style>
+  /* Só o que pertence a esta página: esconder as versões que não estão selecionadas. */
+  .versao.oculto { display: none; }
+</style>
+</head>
+<body>
+<div class="env">
+
+  <header>
+    <div>
+      <div class="marca">Charret<span>IA</span></div>
+      <div class="rotulo" style="margin-top:6px">modelo de aprendizado de máquina com médias móveis</div>
+    </div>
+    <div class="carimbo">registro das versões<br>da tela de triagem</div>
+  </header>
+
+  {{ABAS}}
+
+  <section class="mestra">
+    <div class="mestra-topo">
+      <div>
+        <div class="rotulo">método</div>
+        <h1>Como cada versão funciona</h1>
+        <p class="sub">Cada versão da tela é uma resposta a uma pergunta diferente, com parâmetros
+        próprios. Esta página guarda os dois — a pergunta e os números — para que uma versão antiga
+        possa ser reconstruída sem arqueologia de commit.</p>
+      </div>
+    </div>
+  </section>
+
+  {{VERSOES}}
+
+  {{BLOCOS}}
+
+  <div class="rodape leitura">
+    <p>Uma versão nova nasce quando um achado muda a pergunta, não quando um número muda de valor.
+    Recalibrações entram como nota na versão vigente.<br>
+    <a href="index.html">← Triagem</a> · <a href="alertas.html">Gatilhos →</a></p>
+  </div>
+
+</div>
+
+<script>
+  // O seletor de versão: uma visível por vez, para o passo a passo de cada uma ser lido inteiro
+  // sem concorrer com o da outra. É o único comportamento da página.
+  document.querySelectorAll(".cartao").forEach(function (cartao) {
+    cartao.addEventListener("click", function () {
+      document.querySelectorAll(".cartao").forEach(function (outro) {
+        var ativo = outro === cartao;
+        outro.setAttribute("aria-pressed", String(ativo));
+        var bloco = document.getElementById("ver-" + outro.dataset.versao);
+        if (bloco) bloco.classList.toggle("oculto", !ativo);
+      });
+    });
+  });
+</script>
+
+</body>
+</html>
