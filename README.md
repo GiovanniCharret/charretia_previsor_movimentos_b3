@@ -160,15 +160,28 @@ não saber.
 
 ## O que conferir antes de publicar
 
-O passo 2 mostra uma barra de andamento com o placar ao lado (`ok N | fora M`) e uma linha por papel,
-anunciada no momento em que ele é decidido:
+Os dois geradores que baixam mostram uma barra de andamento com o placar ao lado. Não há resumo no
+fim — a barra já carrega os totais.
+
+**`gerar_alertas.py`** anuncia só quem dispara, porque sessenta linhas de "sem disparo" enterrariam
+as que interessam. Quem ficou sem medida em todas as janelas também aparece: ausência de medida não
+é ausência de gatilho:
+
+```
+papéis: 72%|█████ | 44/61 [00:32<00:13, 1.27papel/s, gatilhos 3 | falhas 0]
+  DISPAROU LREN3    49/86 janelas
+  DISPAROU NATU3    1/121 janelas | 73 sem história
+  DISPAROU PRIO3    4/9 janelas
+```
+
+**`gerar_tela.py`** anuncia uma linha por papel, no momento em que ele é decidido:
 
 ```
   ok  RENT3    decil 0  +11,0 pp
   fora WEGE3    preço parado em 29% dos dias (máximo 15%)
 ```
 
-Não há resumo no fim — a barra já carrega os totais. Confira, enquanto roda:
+Confira, enquanto roda:
 
 - **o BOVA11 tem de sair como `ok`.** Se ele for reprovado, o gerador para com erro. É proposital:
   sem a leitura mestra a tela perde o enquadramento e viraria uma lista de sinais soltos.
@@ -178,8 +191,14 @@ Não há resumo no fim — a barra já carrega os totais. Confira, enquanto roda
   "treino insuficiente" é esperado; um papel antigo reprovando por "volatilidade impossível"
   significa que a série ganhou um desdobramento não ajustado e precisa ser investigada.
 
-Na página aberta, confira:
+Nas páginas abertas, confira:
 
+- **a barra de abas está formatada** nas três — abas espaçadas, com descritor embaixo do nome e
+  sublinhado na página atual. Se ela sair como links sublinhados grudados, falta o link para
+  `estilo_componentes.css` em algum template (aconteceu em 07/09/2026);
+- **o contador ao lado de "Gatilhos" concorda com a tabela** de `alertas.html`. Se divergirem, os
+  geradores rodaram fora de ordem;
+- **`alertas.html` e `metodo.html` abrem** pelas abas, sem 404;
 - **nenhum `{{MARCADOR}}` visível** — se aparecer, o template e o gerador saíram de sincronia;
 - **a régua da leitura mestra tem exatamente um segmento escuro**;
 - **a tabela rola na horizontal dentro da moldura**, sem empurrar a página. Abaixo de 982 pixels
@@ -206,12 +225,27 @@ Três pontos que mordem, todos aprendidos na marra:
    GitHub serve a raiz do repositório, que não tem `index.html` — o site responde 404 mesmo com o
    job verde.
 3. **A rede é a única dependência externa.** O `yfinance` falha em alguns papéis de forma
-   intermitente e o gerador segue; se o **BOVA11** falhar, o processo para com erro, que é o
+   intermitente e os geradores seguem; se o **BOVA11** falhar, o processo para com erro, que é o
    comportamento certo.
+4. **A ordem dos três geradores está fixada no workflow.** `gerar_alertas.py` vem primeiro porque
+   grava o `saida/estado.json` que os outros dois leem. Trocar a ordem publica o contador do dia
+   anterior — sem erro nenhum no log.
 
-## O que esta tela deliberadamente não faz
+**Falha não derruba o site.** Qualquer passo que falhe interrompe o job antes do `deploy-pages`, e o
+Pages mantém a última publicação bem-sucedida. O erro aparece no log e o site continua no ar com o
+conteúdo anterior.
 
-Não emite sinal de venda — o decil alto rende abaixo da média do próprio papel, mas só é negativo
-em termos absolutos em cerca de metade dos casos. Não considera custo de operação nem risco.
-E não trata os papéis como apostas independentes: o efeito é de mercado inteiro, e por isso o
-índice vem antes de tudo na página.
+## O que estas telas deliberadamente não fazem
+
+**A triagem** não emite sinal de venda — o decil alto rende abaixo da média do próprio papel, mas só
+é negativo em termos absolutos em cerca de metade dos casos. E não trata os papéis como apostas
+independentes: o efeito é de mercado inteiro, e por isso o índice vem antes de tudo na página.
+
+**A tela de gatilhos** mede uma coisa só: com que frequência o retorno seguinte foi positivo depois
+de dias como o de hoje, num papel de cada vez. Ela **não mede risco** — quanto o preço ainda cai
+antes de recuperar continua sem medida — e não diz quanto se ganha. A frase central do estudo é que
+a média móvel prevê a **direção, não a magnitude**.
+
+Nenhuma das duas considera custo de operação, carteira, seleção fundamentalista, ajuste de risco ou
+momento macroeconômico. Isso é escopo declarado, não omissão: o objetivo é **um gatilho técnico para
+não perder**, e o resto entra na decisão fora deste estudo.

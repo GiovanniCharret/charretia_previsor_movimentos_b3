@@ -229,6 +229,80 @@ def monta_alertas(aprovados, estados, total_papeis=None):
             .reset_index(drop=True))
 
 
+# Colunas da tabela ranqueada — uma linha por papel. Fixadas para a página saber desenhar o vazio.
+COLUNAS_RANQUEADAS = ["posicao_papel", "total_papeis", "ticker", "peso",
+                      "horizonte_principal", "horizontes",
+                      "janela_de", "janela_ate", "n_setups",
+                      "episodios", "prot_lo", "taxa_base",
+                      "divisoes_usadas", "inicio_medido", "fim_medido"]
+
+
+def ranqueia_papeis(alertas):
+    """
+    Reduz os alertas do dia a UMA LINHA POR PAPEL, ordenada pelo alcance dos horizontes.
+
+    Por que existe: depois de um mês de uso real (12/10/2026), o usuário relatou que a leitura por
+    horizonte não serve à decisão. O que decide é **em quantos prazos, e em quais, o papel aparece**:
+    um papel que dispara em 20 pregões está mais bem posicionado que um que dispara em 3, 5 e 10.
+
+    A regra de peso é a **soma dos dias** dos horizontes em que o papel aparece. Ela tem uma
+    propriedade que não é óbvia e torna a ordenação estável: cada horizonte é **maior que a soma de
+    todos os menores** (45 > 20+10+5+3 = 38; 20 > 10+5+3 = 18; 10 > 5+3 = 8; 5 > 3). Por isso somar
+    os dias dá exatamente o mesmo resultado que ordenar pelo maior horizonte presente, depois pelo
+    segundo maior, e assim por diante — as duas leituras nunca discordam.
+
+    O que a linha exibe vem do **maior horizonte** do papel, porque é o prazo em que o usuário monta
+    posição. Um papel pode ter 72% de limite inferior em 3 pregões e 52% em 10; se 10 é o maior dele,
+    é 52% que a linha mostra. Exibir o melhor número de qualquer prazo enganaria quem lê a tabela
+    como "quanto este papel protege no prazo em que eu opero".
+
+    Uma distinção que importa: aparecer em vários horizontes **não é acumular evidências
+    independentes**. O fechamento cruza o corte de uma janela só, e essa única entrada tem setups
+    aprovados em vários prazos. O que a contagem mede é **robustez ao prazo de permanência**, não
+    quantidade de sinais.
+
+    Entrada: alertas (DataFrame de `monta_alertas`, uma linha por papel/horizonte/faixa).
+    Fase 1: sem alerta nenhum, devolver a tabela vazia com as colunas certas.
+    Fase 2: por papel, os horizontes em que ele aparece, o peso e a melhor faixa do maior horizonte.
+    Fase 3: ordenar por peso, depois pelo limite inferior do maior horizonte, depois pela colocação
+            do papel — o terceiro critério existe para a ordem ser determinística, e não herdada da
+            ordem do arquivo quando os dois primeiros empatam.
+    Saída: DataFrame com uma linha por papel.
+    """
+    # Fase 1: dia sem alerta.
+    if alertas.empty:
+        return pd.DataFrame(columns=COLUNAS_RANQUEADAS)
+
+    linhas = []
+    # Fase 2: um papel por vez.
+    for ticker, d in alertas.groupby("ticker"):
+        # Os horizontes em que o papel disparou, do maior para o menor.
+        hs = sorted(d["horizonte"].unique(), reverse=True)
+        maior = int(hs[0])
+        # A melhor faixa DO MAIOR HORIZONTE representa o papel — é o prazo da decisão.
+        melhor = d[d["horizonte"] == maior].nlargest(1, "prot_lo").iloc[0]
+        linhas.append({
+            "posicao_papel": int(melhor["posicao_papel"]),
+            "total_papeis": int(melhor["total_papeis"]),
+            "ticker": ticker,
+            # O peso é a soma dos dias; ver a propriedade explicada na docstring.
+            "peso": int(sum(hs)),
+            "horizonte_principal": maior,
+            # Os demais, já na ordem de exibição, como texto para caber numa célula.
+            "horizontes": "-".join(str(int(h)) for h in hs[1:]),
+            "janela_de": int(melhor["janela_de"]), "janela_ate": int(melhor["janela_ate"]),
+            "n_setups": int(melhor["n_setups"]), "episodios": int(melhor["episodios"]),
+            "prot_lo": float(melhor["prot_lo"]), "taxa_base": float(melhor["taxa_base"]),
+            "divisoes_usadas": int(melhor["divisoes_usadas"]),
+            "inicio_medido": str(melhor["inicio_medido"]),
+            "fim_medido": str(melhor["fim_medido"]),
+        })
+    # Fase 3 e Saída: peso, depois limite inferior, depois colocação — nunca a ordem do arquivo.
+    return (pd.DataFrame(linhas)[COLUNAS_RANQUEADAS]
+            .sort_values(["peso", "prot_lo", "posicao_papel"], ascending=[False, False, True])
+            .reset_index(drop=True))
+
+
 def _linha_html(r):
     """Uma linha da tabela de alertas (helper de renderização)."""
     # Faixa de uma janela só aparece como número simples; faixa larga mostra o intervalo.
@@ -242,11 +316,14 @@ def _linha_html(r):
     # resultado é divisão única, não validação encadeada — e a marca avisa isso sem texto extra.
     periodo = f"{str(r['inicio_medido'])[:4]}–{str(r['fim_medido'])[:4]}"
     epocas = f" <span class='posicao'>({r['divisoes_usadas']})</span>"
+    # O horizonte principal em destaque, os demais apagados ao lado: sem a distinção, não se sabe a
+    # que prazo o limite inferior da linha se refere.
+    outros = (f" <span class='posicao'>· {r['horizontes']}</span>" if r["horizontes"] else "")
     return (f"<tr>"
             f"<td class='esq papel'>{r['ticker']} <span class='posicao'>{lugar}</span></td>"
             f"<td class='esq'>{faixa}{setups}</td>"
-            f"<td class='destaque'>{100 * r['protecao']:.1f}%</td>"
-            f"<td>{100 * r['prot_lo']:.1f}%</td>"
+            f"<td class='esq'><b>{r['horizonte_principal']}</b>{outros}</td>"
+            f"<td class='destaque'>{100 * r['prot_lo']:.1f}%</td>"
             f"<td>{100 * r['taxa_base']:.1f}%</td>"
             f"<td class='esq'><span class='posicao'>{periodo}</span>{epocas}</td>"
             f"</tr>")
@@ -254,20 +331,21 @@ def _linha_html(r):
 
 def monta_pagina(template, alertas, data_pregao, n_papeis):
     """
-    Preenche o template: a barra de abas, o cabeçalho da leitura e as seções por horizonte.
+    Preenche o template: a barra de abas, o cabeçalho da leitura e a tabela única de papéis.
 
     Por que existe: separa a renderização do cálculo, para o teste da página não precisar de rede e
     para o texto poder ser revisto sem tocar na medição.
 
-    Cada horizonte vira uma seção própria, e não uma coluna de uma tabela única, porque é o
-    horizonte que define **quanto tempo a afirmação cobre** — misturar tudo numa lista apagaria a
-    diferença entre "positivo em 3 pregões" e "positivo em 45", que não são a mesma promessa.
+    Era uma seção por horizonte até 12/10/2026. Depois de um mês de uso real, o usuário relatou que
+    a divisão por prazo não serve à decisão: ele monta posição olhando 45 e 20 pregões, e a presença
+    nos prazos curtos entra como **reforço do mesmo gatilho**, não como alternativa a ele. Uma
+    tabela só, ordenada pelo alcance dos horizontes, é a leitura que ele de fato faz.
 
     Entrada: template (string com os marcadores), alertas (DataFrame de `monta_alertas`),
     data_pregao, n_papeis.
     Fase 1: sem nenhum alerta, desenhar o vazio — é o caso COMUM e precisa ser explícito, nunca
             parecer que a página quebrou.
-    Fase 2: com alertas, o cabeçalho de leitura mais uma seção por horizonte presente.
+    Fase 2: com alertas, reduzir a um papel por linha e montar o cabeçalho mais a tabela única.
     Fase 3: a barra de abas, com o contador do dia, e os demais marcadores.
     Saída: string com o HTML completo.
     """
@@ -286,31 +364,28 @@ def monta_pagina(template, alertas, data_pregao, n_papeis):
             "← ver onde cada papel está na escala</a></div>"
             "</section>")
     else:
-        # Fase 2: o cabeçalho da leitura, com o número que resume o dia.
-        pl = "s" if len(alertas) > 1 else ""
+        # Fase 2: um papel por linha, ordenados pelo alcance dos horizontes.
+        papeis = ranqueia_papeis(alertas)
         pp = "papéis" if papeis_alerta > 1 else "papel"
-        partes = [
+        verbo = "estão" if papeis_alerta > 1 else "está"
+        linhas = "".join(_linha_html(r) for _, r in papeis.iterrows())
+        corpo = (
             "<section class='mestra'><div class='mestra-topo'><div>"
             "<div class='rotulo'>gatilhos acionados no fechamento</div>"
-            f"<h1>{len(alertas)} gatilho{pl} em {papeis_alerta} {pp}</h1>"
+            f"<h1>{papeis_alerta} {pp} {verbo} acionados</h1>"
             "<p class='sub'>Cada linha é um papel que fechou no decil mais afastado para baixo de "
-            "uma janela que o estudo aprovou <em>para ele</em>. A afirmação é sobre <b>não "
-            "perder</b>, e não sobre quanto se ganha.</p>"
+            "uma janela que o estudo aprovou <em>para ele</em>. A ordem segue o <b>alcance dos "
+            "horizontes</b>: quanto mais longo o prazo em que o gatilho protege, mais acima. A "
+            "afirmação é sobre <b>não perder</b>, e não sobre quanto se ganha.</p>"
             f"</div><div class='veredito v-zona'>{papeis_alerta} {pp}</div>"
-            "</div></section>"]
-        # Uma seção por horizonte, do mais curto para o mais longo.
-        for h in sorted(alertas["horizonte"].unique()):
-            d = alertas[alertas["horizonte"] == h]
-            linhas = "".join(_linha_html(r) for _, r in d.iterrows())
-            partes.append(
-                f"<div class='secao'><h2>Horizonte de {h} pregões</h2></div>"
-                f"<div class='quadro'><table><thead><tr>"
-                f"<th class='esq'>papel</th>"
-                f"<th class='esq'>janela <span class='sub2'>(faixa de janelas)</span></th>"
-                f"<th>proteção</th><th>limite inferior</th><th>taxa-base</th>"
-                f"<th class='esq'>período medido <span class='sub2'>(épocas)</span></th>"
-                f"</tr></thead><tbody>{linhas}</tbody></table></div>")
-        corpo = "".join(partes)
+            "</div></section>"
+            "<div class='quadro' style='margin-top:26px'><table><thead><tr>"
+            "<th class='esq'>papel</th>"
+            "<th class='esq'>janela <span class='sub2'>(faixa de janelas)</span></th>"
+            "<th class='esq'>horizontes <span class='sub2'>(o principal em negrito)</span></th>"
+            "<th>limite inferior</th><th>taxa-base</th>"
+            "<th class='esq'>período medido <span class='sub2'>(épocas)</span></th>"
+            f"</tr></thead><tbody>{linhas}</tbody></table></div>")
 
     # Fase 3: os marcadores. A barra vem de `publicacao` para ser idêntica nas três páginas.
     for marca, valor in (("ABAS", barra_de_abas("gatilhos", papeis_alerta)),
@@ -411,7 +486,10 @@ def main() -> None:
     saida.mkdir(parents=True, exist_ok=True)
     (saida / "alertas.html").write_text(html, encoding="utf-8", newline="\n")
     copia_estatica(raiz, saida)
+    # Os dois arquivos: o detalhe por faixa, que é o rastro da evidência, e a tabela ranqueada, que
+    # é o que a página exibe. Guardar só o segundo apagaria em quais prazos cada faixa disparou.
     alertas.to_csv(saida / "alertas.csv", index=False, lineterminator="\n")
+    ranqueia_papeis(alertas).to_csv(saida / "ranking_do_dia.csv", index=False, lineterminator="\n")
     # O estado é o que permite à triagem exibir o contador sem refazer 61 downloads.
     grava_estado(saida, n_papeis_alerta, len(alertas), data_pregao)
     print(f"Página gravada em {saida / 'alertas.html'}")

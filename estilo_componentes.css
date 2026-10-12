@@ -115,3 +115,17 @@ thead th .sub2 { text-transform:none; letter-spacing:0; font-weight:400; opacity
   .aba { padding-left:0; padding-right:16px; }
   .aba .d { display:none; }
 }
+
+/* ---------- página de método: notas de uma versão ----------
+   O que mudou DEPOIS de a versão entrar no ar, sem mudar a pergunta. Tom mais discreto que o bloco
+   "o que mudou": é registro de ajuste, não de achado. */
+.notas { margin-top:14px; background:var(--surface); border:1px solid var(--rule);
+         border-left:3px solid var(--rule-forte); border-radius:3px; padding:18px 22px; }
+.notas h3 { font-family:var(--display); font-size:10.5px; font-weight:700; letter-spacing:0.12em;
+            text-transform:uppercase; color:var(--ink-3); margin:0 0 12px; }
+.nota-versao { display:grid; gap:4px; padding:10px 0; border-top:1px solid var(--rule); }
+.nota-versao:first-of-type { border-top:none; padding-top:0; }
+.nota-versao .quando { font-family:var(--mono); font-size:11px; color:var(--acento);
+                       font-weight:700; }
+.nota-versao p { font-family:var(--serif); font-size:14.5px; color:var(--ink-2); margin:0; }
+.nota-versao p b { font-family:var(--display); font-size:13px; font-weight:600; color:var(--ink); }

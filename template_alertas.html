@@ -37,16 +37,32 @@
           corte vem de toda a história do papel, não dos últimos meses.</dd>
         </div>
         <div class="verbete">
-          <dt>proteção</dt>
-          <dd>Em que fração dos <b>episódios independentes</b> daquele setup o retorno seguinte saiu
-          positivo. Dias contíguos contam como um episódio só, porque seus retornos futuros se
-          sobrepõem. Não é previsão de tamanho: é frequência de não perder.</dd>
+          <dt>limite inferior</dt>
+          <dd>O piso do intervalo de confiança de 95% da <b>proteção</b> — a fração dos
+          <b>episódios independentes</b> daquele setup em que o retorno seguinte saiu positivo (dias
+          contíguos contam como um episódio só, porque seus retornos futuros se sobrepõem). É este
+          número, e não a proteção crua, que a tabela exibe e por ele que os papéis desempatam:
+          crua, <em>dois acertos em dois episódios</em> valeriam 100% e venceriam noventa episódios
+          com 75%. Não é previsão de tamanho: é frequência de não perder.</dd>
         </div>
         <div class="verbete">
-          <dt>limite inferior</dt>
-          <dd>O piso do intervalo de confiança de 95% da proteção. É por ele que os setups são
-          ordenados, e não pela proporção crua: crua, <em>dois acertos em dois episódios</em>
-          valeriam 100% e venceriam noventa episódios com 75%.</dd>
+          <dt>horizontes</dt>
+          <dd>Em quantos pregões a afirmação se cumpre. O número em <b>negrito</b> é o
+          <b>principal</b> — o prazo mais longo em que o papel disparou hoje —, e é a ele que o
+          limite inferior, a janela e o período medido da linha se referem. Os números apagados ao
+          lado são os demais prazos em que o mesmo gatilho também protege.
+          <br><br>Aparecer em vários horizontes <b>não é acumular evidências independentes</b>: o
+          fechamento cruza o corte de uma janela só, e essa única entrada tem setups aprovados em
+          vários prazos. O que a lista mede é <em>robustez ao prazo de permanência</em>.</dd>
+        </div>
+        <div class="verbete">
+          <dt>a ordem da tabela</dt>
+          <dd>Pela <b>soma dos dias</b> dos horizontes em que o papel aparece. Um papel que dispara
+          em 20 pregões vem antes de um que dispara em 3, 5 e 10, porque 20 &gt; 18. A escala tem uma
+          propriedade que torna isso estável: cada horizonte é maior que a soma de todos os menores,
+          então somar os dias dá o mesmo resultado que ordenar pelo maior prazo presente. Empates
+          são desfeitos pelo limite inferior do horizonte principal e, depois, pela colocação do
+          papel no ranking.</dd>
         </div>
         <div class="verbete">
           <dt>taxa-base</dt>

@@ -73,6 +73,39 @@ class TestOSiteFalaDoMesmoDia:
         assert html.count('aria-current="page"') == 1
 
 
+class TestATabelaUnica:
+    def test_a_coluna_de_protecao_crua_nao_aparece(self):
+        # Removida em 12/10/2026 a pedido do usuário: a decisão sempre se apoiou no limite inferior,
+        # e exibir as duas convidava a ler a mais otimista.
+        html = gerar_alertas.monta_pagina(
+            (RAIZ / "template_alertas.html").read_text(encoding="utf-8"),
+            _alertas(2), "2026-09-04", 61)
+        assert "<th>proteção</th>" not in html
+        assert "limite inferior" in html
+
+    def test_e_uma_tabela_so_e_nao_uma_secao_por_horizonte(self):
+        html = gerar_alertas.monta_pagina(
+            (RAIZ / "template_alertas.html").read_text(encoding="utf-8"),
+            _alertas(3), "2026-09-04", 61)
+        assert html.count("<table>") == 1
+        assert "Horizonte de" not in html
+
+    def test_cada_papel_aparece_uma_vez_so(self):
+        # O mesmo papel em três horizontes vira uma linha, não três.
+        import pandas as pd
+        linhas = []
+        for h in (3, 5, 10):
+            linhas.append({"posicao_papel": 31, "total_papeis": 61, "ticker": "LREN3",
+                           "horizonte": h, "janela_de": 40, "janela_ate": 87, "n_setups": 48,
+                           "episodios": 43, "protecao": 0.86, "prot_lo": 0.72, "taxa_base": 0.50,
+                           "divisoes_usadas": 4, "inicio_medido": "2010-01-04",
+                           "fim_medido": "2026-09-01"})
+        html = gerar_alertas.monta_pagina(
+            (RAIZ / "template_alertas.html").read_text(encoding="utf-8"),
+            pd.DataFrame(linhas), "2026-09-04", 61)
+        assert html.count("<tr><td class='esq papel'>LREN3") == 1
+
+
 class TestNenhumMarcadorEscapa:
     def test_pagina_de_gatilhos_com_alertas(self):
         html = gerar_alertas.monta_pagina(

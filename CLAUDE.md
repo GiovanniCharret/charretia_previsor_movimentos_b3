@@ -10,7 +10,7 @@ O repositório é escrito em português (código, docstrings, comentários, comm
 python -m venv .venv; .venv\Scripts\activate
 pip install -r requirements.txt pytest
 
-python -m pytest -q                        # todos os testes (offline, preços sintéticos, segundos)
+python -m pytest -q                        # os 67 testes (offline, preços sintéticos, segundos)
 python -m pytest tests/test_gerar_tela.py::TestClassificaEvidencia -q     # uma classe
 python -m pytest -q -k "regua"                                            # um teste por nome
 
@@ -142,6 +142,17 @@ a resincronização é manual e nada avisa quando ela atrasa.
 **`estudo/setups.csv` tem a mesma natureza**, e o mesmo risco: é gerado lá por
 `robusta_ml.exporta_setups` e versionado aqui. `estudo/PROVENIENCIA.md` registra a data, o commit de
 origem e se havia alterações não commitadas na ocasião. Nunca edite o arquivo à mão — reexporte.
+
+## Os testes que não pertencem a nenhum gerador
+
+`tests/test_site.py` cobre propriedades que **nenhum gerador sozinho garante**: as três páginas se
+alcançam, exibem o mesmo contador, não deixam marcador de template escapar, e todo estilo declarado
+está linkado em todo template.
+
+Essa última nasceu de um defeito real (07/09/2026): o teste original verificava só que *todo estilo
+linkado é copiado*, e passava enquanto a barra de abas da página inicial saía sem formatação nenhuma.
+**Uma verificação que confirma um lado de uma relação bidirecional não é uma verificação da
+relação.** Ao acrescentar um estático ou um componente compartilhado, escreva as duas direções.
 
 ## Escrita do código
 

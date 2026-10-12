@@ -12,8 +12,13 @@ etapa de leitura sem ganhar nada — e perderia a possibilidade de comentar cada
 metade do valor de um registro histórico.
 
 **Regra de quando nasce uma versão nova:** quando um achado muda a *pergunta*, não quando um número
-muda de valor. Recalibrações entram como nota na versão vigente. Sem esse critério, cada nova
-varredura viraria uma versão e a página perde a serventia em poucos meses.
+muda de valor. Recalibrações e mudanças de apresentação entram como **nota** na versão vigente — é
+o campo `notas`, uma lista de pares (data, texto). Sem esse critério, cada nova varredura viraria
+uma versão e a página perde a serventia em poucos meses.
+
+Confirmado pelo usuário em 12/10/2026, ao reorganizar a tabela de gatilhos depois de um mês de uso
+real: aquilo mudou como a resposta é **lida**, não o que é **perguntado** — logo, nota na v2. A
+próxima versão nasce quando o **modelo** mudar.
 
 Ordem da lista: da mais recente para a mais antiga. A primeira é a que a página abre.
 """
@@ -88,6 +93,19 @@ VERSOES = [
             "nem toda época sobrevive à peneira. Só 13 dos 61 papéis usam as cinco divisões — por "
             "isso a tabela de gatilhos exibe o período medido ao lado de cada linha.",
         ],
+        # Notas: o que mudou DEPOIS de a versão entrar no ar, sem mudar a pergunta que ela responde.
+        "notas": [
+            ("12/10/2026", "Primeiro retorno de <b>uso real</b>, após um mês acompanhando os "
+                           "alertas. A tela deixou de ser uma seção por horizonte e passou a ser "
+                           "<b>uma tabela só, com um papel por linha</b>, ordenada pela soma dos "
+                           "dias dos horizontes em que o papel dispara. O usuário monta posição "
+                           "olhando 45 e 20 pregões; a presença nos prazos curtos entra como "
+                           "<em>reforço do mesmo gatilho</em>, não como alternativa a ele. A coluna "
+                           "de proteção crua saiu — a decisão sempre se apoiou no limite inferior, "
+                           "e exibir as duas convidava a ler a mais otimista. Os números da linha "
+                           "passaram a vir do <b>maior horizonte</b> do papel, que é o prazo da "
+                           "decisão: um papel com 72% em 3 pregões e 52% em 10 exibe 52%."),
+        ],
         "receita": None,
     },
     {
@@ -141,6 +159,7 @@ VERSOES = [
             "escolhidos antes do achado N, peneira de qualidade global, e uma única divisão entre "
             "treino e teste em vez de cinco.",
         ],
+        "notas": [],
         # A receita de retorno só existe para versões que não estão em produção — para a vigente,
         # "como voltar" não faz sentido.
         "receita": "<b>1.</b> Restaure os parâmetros do quadro acima em <code>nucleo/config.py</code>.\n"

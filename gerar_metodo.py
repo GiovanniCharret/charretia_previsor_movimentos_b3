@@ -95,6 +95,14 @@ def _mudou(v):
     itens = "".join(f"<li>{x}</li>" for x in v["mudou"])
     html = (f'<div class="mudou leitura"><h3>{v["titulo_mudou"]}</h3>'
             f'<ul>{itens}</ul></div>')
+    # As notas: o que mudou DEPOIS de a versão entrar no ar, sem mudar a pergunta. É o registro que
+    # distingue "a tela foi ajustada" de "o estudo mudou" — sem ele, as duas coisas se confundiriam
+    # no histórico, e um retorno a uma versão anterior restauraria a pergunta errada.
+    if v["notas"]:
+        notas = "".join(f'<div class="nota-versao"><span class="quando">{quando}</span>'
+                        f'<p>{texto}</p></div>' for quando, texto in v["notas"])
+        html += (f'<div class="notas leitura"><h3>o que mudou depois, sem mudar a pergunta</h3>'
+                 f'{notas}</div>')
     # A receita de retorno, quando a versão não é a vigente.
     if v["receita"]:
         html += (f'<div class="receita leitura"><h3>como voltar para esta versão</h3>'
