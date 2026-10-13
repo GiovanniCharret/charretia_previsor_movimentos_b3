@@ -124,7 +124,8 @@ class TestNenhumMarcadorEscapa:
         assert "resultado esperado" in html
 
 
-TEMPLATES = ("template.html", "template_alertas.html", "template_metodo.html")
+TEMPLATES = ("template.html", "template_alertas.html", "template_extremos.html",
+             "template_metodo.html")
 
 
 class TestOEstiloAcompanha:

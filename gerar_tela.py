@@ -369,8 +369,11 @@ def main() -> None:
     aqui = Path(__file__).parent
     # Fase 1: lista de papéis e template.
     # Lista de papéis: mora DENTRO da pasta, senão a publicação dependeria de um arquivo do
-    # laboratório que não sobe junto.
-    tickers = pd.read_csv(aqui / "tickers.csv")["tickers"].dropna().tolist()
+    # laboratório que não sobe junto. Desde 12/10/2026 é a planilha `lista_tickers_liquidos.xlsx`
+    # (coluna `ticker`), a mesma que o laboratório usa — antes era `tickers.csv`. O índice
+    # (`config.DIST_INDICE`) precisa estar nela: é a leitura mestra da página.
+    tickers = (pd.read_excel(aqui / "lista_tickers_liquidos.xlsx")["ticker"]
+               .dropna().astype(str).str.strip().str.upper().tolist())
     template = (aqui / "template.html").read_text(encoding="utf-8")
     print(f"{len(tickers)} papéis na lista | janela {config.DIST_JANELA}, "
           f"horizonte {config.DIST_HORIZONTE} dias")

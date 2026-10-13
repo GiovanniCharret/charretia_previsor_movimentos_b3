@@ -91,6 +91,21 @@ PREGOES_POR_ANO = 248
 ARQUIVO_SETUPS = "estudo/setups.csv"
 
 # ============================================================================
+# v3 — FAIXA EXTREMA (`gerar_extremos.py`)
+# ============================================================================
+#
+# Vem do achado W (12/10/2026): a proteção por episódio da v2 é em grande parte efeito mecânico da
+# contagem; o que sobrou é um indício medido POR DIA, nos percentis de 2,5% e 5%. As janelas, os
+# percentis e os horizontes não são escolhidos aqui — vêm dentro dos dois arquivos abaixo, exportados
+# pelo laboratório por `robusta_ml.faixa_extrema`. Ver `estudo/PROVENIENCIA_FAIXA_EXTREMA.md`.
+
+# O limiar de cada (papel, janela, percentil), medido sobre a história completa.
+ARQUIVO_FAIXA_CORTES = "estudo/faixa_extrema_cortes.csv"
+
+# Por (papel, percentil, horizonte): frequência por dia, limite inferior, taxa-base e período medido.
+ARQUIVO_FAIXA_MEDIDAS = "estudo/faixa_extrema_medidas.csv"
+
+# ============================================================================
 # Comum às duas versões
 # ============================================================================
 

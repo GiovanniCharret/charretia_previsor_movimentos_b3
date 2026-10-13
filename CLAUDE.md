@@ -10,12 +10,13 @@ O repositório é escrito em português (código, docstrings, comentários, comm
 python -m venv .venv; .venv\Scripts\activate
 pip install -r requirements.txt pytest
 
-python -m pytest -q                        # os 67 testes (offline, preços sintéticos, segundos)
+python -m pytest -q                        # os 97 testes (offline, preços sintéticos, segundos)
 python -m pytest tests/test_gerar_tela.py::TestClassificaEvidencia -q     # uma classe
 python -m pytest -q -k "regua"                                            # um teste por nome
 
 # As três páginas, NESTA ORDEM (gerar_alertas grava o estado que as outras duas leem):
 python gerar_alertas.py                    # tela de gatilhos, 61 downloads
+python gerar_extremos.py                   # tela da faixa extrema (v3), 61 downloads
 python gerar_tela.py                       # tela de triagem, ~70 downloads
 python gerar_metodo.py                     # página de método, sem rede
 start saida\index.html
@@ -28,12 +29,13 @@ só os dois primeiros geradores baixam.
 
 ## Arquitetura
 
-**Três páginas, três geradores independentes, um módulo em comum.**
+**Quatro páginas, quatro geradores independentes, um módulo em comum.**
 
 | gerador | página | fonte dos dados |
 |---|---|---|
-| `gerar_tela.py` | `index.html` — triagem | `tickers.csv` + downloads |
+| `gerar_tela.py` | `index.html` — triagem | `lista_tickers_liquidos.xlsx` + downloads |
 | `gerar_alertas.py` | `alertas.html` — gatilhos | `estudo/setups.csv` + downloads |
+| `gerar_extremos.py` | `extremos.html` — faixa extrema (v3, a vigente) | `estudo/faixa_extrema_*.csv` + downloads |
 | `gerar_metodo.py` | `metodo.html` — método | `versoes.py`, **sem rede** |
 
 `publicacao.py` carrega o que os três dividem: a barra de abas (`barra_de_abas`), a cópia dos
@@ -52,7 +54,8 @@ Duas regras que não são óbvias e o código sustenta:
 
 ### A triagem (v1)
 
-Pipeline de um comando só (`gerar_tela.py: main()`): lê `tickers.csv` → baixa cada papel
+Pipeline de um comando só (`gerar_tela.py: main()`): lê `lista_tickers_liquidos.xlsx` (coluna
+`ticker`, 100 papéis; cópia da lista do laboratório) → baixa cada papel
 (`nucleo.data.load_prices`, único ponto de rede) → peneira de qualidade
 (`nucleo.qualidade_dados.avalia_qualidade`) → `estado_de_hoje()` por aprovado →
 `monta_pagina()` preenche `template.html` → grava `saida/index.html` e `saida/dados/{TICKER}.xlsx`.
@@ -85,7 +88,43 @@ A linha "menos pior" dos papéis sem nenhum setup aprovado (`passa_barra` falso)
 pode disparar o decil, mas não é gatilho, e exibi-la ao lado dos aprovados apresentaria como sinal o
 que a planilha marca como ausência de sinal.
 
-### O método (v3 da documentação, não da tela)
+**A página exibe uma tabela só, com um papel por linha** (desde 12/10/2026, pedido do usuário depois
+de um mês de uso real). `monta_alertas` continua devolvendo o detalhe por papel, horizonte e faixa —
+é o que vai para `saida/alertas.csv` — e `ranqueia_papeis` o reduz ao que a tela mostra, gravado
+também em `saida/ranking_do_dia.csv`. Três regras que não devem ser "simplificadas":
+
+- **A ordem é a soma dos dias dos horizontes** em que o papel dispara, depois o limite inferior do
+  maior horizonte, depois a colocação do papel. Como cada horizonte (3, 5, 10, 20, 45) é maior que a
+  soma de todos os menores, somar os dias equivale a ordenar pelo maior prazo presente. Um teste
+  verifica isso em todos os pares de subconjuntos: acrescentar um horizonte que quebre a
+  propriedade faz o teste falhar.
+- **Os números da linha vêm do maior horizonte do papel**, não do melhor. É o prazo em que o usuário
+  monta posição (ele opera olhando 45 e 20 pregões; os curtos entram como reforço).
+- **Não há coluna de proteção crua**, só o limite inferior — exibir as duas convidava a ler a mais
+  otimista.
+
+Mudanças de apresentação como essa entram no campo `notas` da versão vigente em `versoes.py`, não
+como versão nova. A próxima versão nasce quando o **modelo** mudar.
+
+### A faixa extrema (v3) — a versão vigente
+
+Nasceu do achado W do laboratório (12/10/2026): a proteção por episódio da v2 é em grande parte
+**efeito mecânico da contagem** (preços sem memória já devolvem 75% a 80%). O que restou é um
+indício medido **por dia** nos percentis de 2,5% e 5%. Regras que não devem ser "melhoradas":
+
+- **A medida é frequência por dia, nunca por episódio.** O episódio entra só como tamanho de amostra
+  do limite inferior, porque dias seguidos não são independentes.
+- **Não há janela vencedora.** São nove janelas fixadas antes do teste; a tela conta em quantas o
+  papel está abaixo do corte. Destacar uma janela seria escolher depois de ver o resultado.
+- **O limite inferior por papel fica abaixo da taxa-base em quase todas as linhas, e isso é o
+  correto**: um papel tem menos de dez episódios extremos em vinte anos. O efeito só aparece
+  juntando os papéis, e mesmo assim como indício. Não troque a medida para "melhorar" a tabela.
+- **O quadro "Um indício, não um achado" faz parte da página** e tem teste. Também tem teste o aviso
+  no topo de `alertas.html`, que explica que a medida da v2 não passou no controle.
+- Os cortes e as medidas vêm de `estudo/faixa_extrema_cortes.csv` e `faixa_extrema_medidas.csv`,
+  exportados por `robusta_ml.faixa_extrema`. A tela não recalcula corte nem frequência.
+
+### O método
 
 `gerar_metodo.py` monta a página a partir de `versoes.py`, que é o **registro histórico**: por
 versão, a pergunta que ela responde, os parâmetros exatos, o passo a passo e — só para as que não

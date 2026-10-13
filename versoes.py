@@ -20,15 +20,94 @@ Confirmado pelo usuário em 12/10/2026, ao reorganizar a tabela de gatilhos depo
 real: aquilo mudou como a resposta é **lida**, não o que é **perguntado** — logo, nota na v2. A
 próxima versão nasce quando o **modelo** mudar.
 
+Foi o que aconteceu no mesmo dia: o controle com preços sem memória mostrou que a medida da v2 era
+em grande parte efeito da contagem, e a medida passou a ser outra (dias, e não episódios; percentis
+de 2,5% e 5%). Isso é a **v3**. A v2 fica como "mantida", com a nota do que foi descoberto e a
+página dela no ar — o registro existe para contar o caminho, inclusive o que não se sustentou.
+
 Ordem da lista: da mais recente para a mais antiga. A primeira é a que a página abre.
 """
 
 VERSOES = [
     {
-        "id": "v2",
-        "nome": "Gatilhos de proteção",
+        "id": "v3",
+        "nome": "Faixa extrema",
         "estado": "em produção",
         "classe_estado": "e-ativa",
+        "data": "12/10/2026",
+        "origem": "achado W",
+        "pergunta": "Que papéis fecharam hoje entre os <b>2,5% ou 5% de dias mais afastados para "
+                    "baixo</b> da própria média — a única faixa em que restou indício depois do "
+                    "controle com preços sem memória?",
+        "parametros": [
+            ("papéis", "61"),
+            ("janelas", "5, 10, 20, 30, 45, 60, 90, 130, 200"),
+            ("cortes", "percentis de 2,5% e 5%"),
+            ("horizontes", "20 e 45 pregões"),
+            ("medida", "frequência por dia"),
+            ("desvio da distância", "252 pregões"),
+            ("divisões da validação", "5 · 2006 → 2027"),
+            ("tamanho de amostra do intervalo", "episódios"),
+            ("teste conjunto", "59 papéis, peso igual"),
+            ("placebo", "uma moeda por data · 200 séries"),
+            ("excesso em 2,5% (20 · 45)", "+4,2 · +7,3 pontos"),
+            ("valor-p em 2,5% (20 · 45)", "0,15 · 0,035"),
+        ],
+        "passos": [
+            ("O controle com preços sem memória",
+             "Os retornos diários reais de cada papel são reordenados para destruir qualquer "
+             "memória, mantendo a distribuição e a tendência. Nessas séries nada pode ser previsto; "
+             "o que uma medida mostrar ali é <b>efeito da própria forma de contar</b>."),
+            ("A proteção por episódio não passa no controle",
+             "Em preços sem memória ela já devolve de 75% a 80%. O tamanho do episódio depende do "
+             "que vem depois: a queda que reverte vira um episódio curto e positivo, a que continua "
+             "estica o mesmo episódio. Dar peso igual a cada episódio multiplica as reversões."),
+            ("Contar dias em vez de episódios",
+             "Cada dia acionado é uma observação, e nada do que acontece depois decide o peso "
+             "dela. Nessa medida as séries sem memória ficam <b>na taxa-base</b>, como devem."),
+            ("Cortes do próprio papel, só do treino",
+             "A distância é dividida pelo desvio-padrão do próprio papel e comparada com os "
+             "percentis de 2,5% e 5% dele, calculados no treino de cada divisão."),
+            ("Nove janelas fixadas antes",
+             "De 5 a 200 pregões. Não se elege janela vencedora: o número de um papel é a média "
+             "entre as nove, e a tela conta em quantas delas ele está abaixo do corte hoje."),
+            ("Juntar os papéis com peso igual",
+             "Cada papel é medido contra a própria taxa-base e entra com o mesmo peso. BOVA11 e "
+             "SMAL11 ficam fora da média, porque são cestas dos outros."),
+            ("Placebo conjunto, uma moeda por data",
+             "Os papéis caem juntos, então a direção de cada dia é sorteada <b>uma vez para "
+             "todos</b>. Isso mantém o movimento conjunto do mercado e os períodos de agitação, e "
+             "desfaz só a memória de direção."),
+            ("O controle de 30% e a escada",
+             "O percentil de 30% entra como controle e fica em zero. O excesso cresce conforme o "
+             "corte aprofunda: +2,2 pontos em 10%, +3,1 em 5%, +4,2 em 2,5% (20 pregões)."),
+        ],
+        "titulo_mudou": "O que esta versão sabe e a anterior não sabia",
+        "mudou": [
+            "<b>A proteção por episódio da v2 mede principalmente a contagem.</b> Papel a papel, "
+            "ela não se distingue do placebo: de 61 papéis, passam de 1 a 5 por horizonte, e 3 "
+            "passariam só por acaso.",
+            "<b>O teste de rotação da v2 não pegava isso</b>, porque rotacionar os retornos desfaz "
+            "justamente o vínculo mecânico entre o episódio e o desfecho.",
+            "<b>O que sobra é pequeno e mora nos extremos.</b> Contando dias, o excesso sobre a "
+            "taxa-base vai de zero (percentil de 30%) a 4 a 7 pontos (percentil de 2,5%), e cresce "
+            "com o horizonte.",
+            "<b>É indício, não achado.</b> Contra o placebo conjunto, só um de seis testes passa de "
+            "5%. As quedas extremas caem nas mesmas datas para quase todos os papéis, então 59 "
+            "papéis valem muito menos que 59 amostras.",
+            "<b>Papel a papel o efeito não é detectável</b>: um papel tem menos de dez episódios "
+            "extremos em vinte anos, e o limite inferior dele fica abaixo da taxa-base.",
+            "<b>Os mesmos decis não indicam saída.</b> No decil mais alto, nenhuma medida se separa "
+            "do placebo; nos prazos curtos o papel tende a continuar, não a devolver.",
+        ],
+        "notas": [],
+        "receita": None,
+    },
+    {
+        "id": "v2",
+        "nome": "Gatilhos de proteção",
+        "estado": "mantida",
+        "classe_estado": "e-mantida",
         "data": "07/09/2026",
         "origem": "achados N a U",
         "pergunta": "Em que papel, hoje, um gatilho técnico indica <b>não perder</b> nos próximos "
@@ -105,8 +184,19 @@ VERSOES = [
                            "e exibir as duas convidava a ler a mais otimista. Os números da linha "
                            "passaram a vir do <b>maior horizonte</b> do papel, que é o prazo da "
                            "decisão: um papel com 72% em 3 pregões e 52% em 10 exibe 52%."),
+            ("12/10/2026", "<b>A medida desta versão não passou no controle.</b> Em séries de preços "
+                           "sem memória, a proteção por episódio já devolve de 75% a 80%, contra a "
+                           "taxa-base de 52% a 55% usada como barra. O ranking de proteção ordena "
+                           "os papéis principalmente pelo que afeta essa contagem, e não por "
+                           "previsibilidade. A página continua no ar, com um aviso, porque registra "
+                           "o caminho da pesquisa; a medida corrigida é a da v3."),
         ],
-        "receita": None,
+        "receita": "<b>1.</b> A página de gatilhos continua sendo gerada por <code>gerar_alertas.py</code>;\n"
+                   "   para voltar a tratá-la como a versão vigente, remova o aviso do topo de\n"
+                   "   <code>template_alertas.html</code> e troque os estados neste registro.\n"
+                   "<b>2.</b> Ela depende de <code>estudo/setups.csv</code>, exportado pelo laboratório.\n"
+                   "<b>3.</b> Antes de voltar, leia o achado W: os números desta versão comparam\n"
+                   "   uma medida por episódio com uma taxa-base por dia.",
     },
     {
         "id": "v1",

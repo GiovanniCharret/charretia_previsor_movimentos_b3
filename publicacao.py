@@ -29,6 +29,7 @@ from pathlib import Path                                    # caminhos
 PAGINAS = [
     ("triagem", "index.html", "Triagem", "onde cada papel está na escala, hoje"),
     ("gatilhos", "alertas.html", "Gatilhos", "quem entrou numa faixa que o estudo aprovou"),
+    ("extremos", "extremos.html", "Faixa extrema", "quem está entre os dias mais afastados da média"),
     ("metodo", "metodo.html", "Método", "como cada versão funciona, passo a passo"),
 ]
 

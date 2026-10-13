@@ -1,4 +1,4 @@
-# Gera as três páginas do site e publica no GitHub Pages.
+# Gera as quatro páginas do site e publica no GitHub Pages.
 #
 # ORDEM IMPORTA. `gerar_alertas.py` roda primeiro porque deixa em `saida/estado.json` quantos papéis
 # dispararam hoje, e é dele que as outras duas tiram o contador da barra de abas. Invertida a ordem,
@@ -34,9 +34,9 @@ concurrency:
 jobs:
   publicar:
     runs-on: ubuntu-latest
-    # Agora são dois conjuntos de downloads (61 papéis para os gatilhos, 70 para a triagem):
-    # 2 a 4 minutos no total. A folga cobre lentidão da fonte sem travar a fila.
-    timeout-minutes: 25
+    # São três conjuntos de downloads (61 papéis para os gatilhos, 100 para a faixa extrema e 100
+    # para a triagem): 4 a 8 minutos no total. A folga cobre lentidão da fonte sem travar a fila.
+    timeout-minutes: 30
     environment:
       name: github-pages
       url: ${{ steps.publicacao.outputs.page_url }}
@@ -60,6 +60,10 @@ jobs:
       - name: Gerar a tela de gatilhos
         run: python gerar_alertas.py
 
+      # A faixa extrema (v3) lê os cortes e as medidas exportados pelo laboratório em `estudo/`.
+      - name: Gerar a tela da faixa extrema
+        run: python gerar_extremos.py
+
       - name: Gerar a tela de triagem
         run: python gerar_tela.py
 
@@ -75,7 +79,7 @@ jobs:
           find saida -maxdepth 2 | sort
           # As três páginas, os dois estilos e o estado do dia. Qualquer ausência aqui vira um 404
           # ou uma página sem formatação no ar — falha silenciosa, que só aparece ao abrir o site.
-          for arquivo in index.html alertas.html metodo.html estilo.css estilo_componentes.css; do
+          for arquivo in index.html alertas.html extremos.html metodo.html estilo.css estilo_componentes.css; do
             test -f "saida/$arquivo" \
               || { echo "::error::$arquivo não está na pasta publicada"; exit 1; }
           done

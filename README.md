@@ -2,12 +2,13 @@
 
 **No ar:** https://giovannicharret.github.io/charretia_previsor_movimentos_b3/
 
-Gera **três páginas estáticas**, publicadas diariamente no GitHub Pages:
+Gera **quatro páginas estáticas**, publicadas diariamente no GitHub Pages:
 
 | página | pergunta que responde |
 |---|---|
 | `index.html` — **triagem** | onde cada papel líquido está hoje na escala de afastamento da média móvel, e o que historicamente aconteceu depois de dias naquela posição |
-| `alertas.html` — **gatilhos** | quais papéis fecharam hoje numa faixa que o estudo mediu como protetiva, com o setup aprovado para cada papel |
+| `alertas.html` — **gatilhos** | quais papéis fecharam hoje numa faixa que o estudo mediu como protetiva — uma tabela só, um papel por linha, ordenada pelo alcance dos horizontes em que ele dispara |
+| `extremos.html` — **faixa extrema** (a versão vigente) | quais papéis fecharam hoje entre os 2,5% ou 5% de dias mais afastados para baixo da própria média — a única faixa em que restou indício depois do controle com preços sem memória |
 | `metodo.html` — **método** | como cada versão da tela funciona, com que parâmetros, e como voltar a uma versão anterior |
 
 As duas primeiras convivem porque respondem perguntas diferentes: a triagem sempre tem os setenta
@@ -25,17 +26,21 @@ mede nada novo, apenas se aplica o que já foi medido e validado fora da amostra
 |---|---|
 | `gerar_tela.py` | gerador da **triagem**: baixa, peneira, calcula o estado de hoje, grava a página e as planilhas |
 | `gerar_alertas.py` | gerador dos **gatilhos**: cruza os setups aprovados com o fechamento de hoje |
+| `gerar_extremos.py` | gerador da **faixa extrema**: conta em quantas de nove janelas o papel está abaixo dos percentis de 2,5% e 5% |
 | `gerar_metodo.py` | gerador do **método**: não toca a rede, monta a página a partir de `versoes.py` |
 | `publicacao.py` | o que as três páginas dividem: a barra de abas, a cópia dos estilos e o estado do dia |
 | `versoes.py` | o **registro histórico** das versões: pergunta, parâmetros, passo a passo e receita de retorno |
 | `template*.html` | as três páginas com marcadores `{{...}}` |
 | `estilo.css`, `estilo_componentes.css` | o sistema visual e os componentes, ambos linkados pelas três páginas |
-| `tickers.csv` | os 70 papéis líquidos rastreados pela triagem |
+| `lista_tickers_liquidos.xlsx` | os 100 papéis líquidos rastreados pela triagem (coluna `ticker`); é cópia da lista do laboratório |
 | `estudo/setups.csv` | os setups aprovados, **exportados pelo laboratório** (ver *Proveniência do estudo*) |
+| `estudo/faixa_extrema_cortes.csv`, `estudo/faixa_extrema_medidas.csv` | os limiares e as frequências da faixa extrema, **exportados pelo laboratório** por `robusta_ml.faixa_extrema` (ver `estudo/PROVENIENCIA_FAIXA_EXTREMA.md`) |
 | `nucleo/` | cópia do que as telas usam do laboratório (ver *Proveniência do núcleo*) |
 | `saida/*.html` | as três páginas geradas |
 | `saida/dados/{TICKER}.xlsx` | uma planilha de estudo por papel visível na triagem |
 | `saida/estado.json` | ligação entre geradores: quantos papéis dispararam hoje |
+| `saida/ranking_do_dia.csv` | o que a tela de gatilhos exibe: um papel por linha, já ordenado |
+| `saida/alertas.csv` | o detalhe por trás do ranking: uma linha por papel, horizonte e faixa de janelas |
 
 **A ordem de execução importa.** `gerar_alertas.py` roda primeiro porque grava `saida/estado.json`,
 de onde as outras duas tiram o contador da barra de abas. Invertida a ordem, o site publica com o
@@ -96,6 +101,27 @@ $env:PYTHONPATH="src"; uv run python -m robusta_ml.exporta_setups
 O terceiro comando grava direto neste repositório. Como o `nucleo/`, é **sincronização manual**:
 nada avisa quando o laboratório avança e o arquivo aqui fica para trás.
 
+## As três versões, e por que a segunda continua no ar
+
+| versão | página | situação |
+|---|---|---|
+| v1 — triagem por afastamento | `index.html` | mantida; página de entrada |
+| v2 — gatilhos de proteção | `alertas.html` | mantida **com aviso**: a medida dela não passou no controle |
+| v3 — faixa extrema | `extremos.html` | vigente; publica um **indício**, com esse nome |
+
+Em 12/10/2026 um controle com **preços sem memória** (os retornos reais de cada papel reordenados,
+de modo que nada pode ser previsto) mostrou que a proteção por episódio da v2 já devolve de 75% a
+80% nessas séries, contra a taxa-base de 52% a 55% com que era comparada. O tamanho do episódio
+depende do que vem depois, e dar peso igual a cada episódio multiplica as quedas que reverteram.
+
+O que sobrou, contando **dias**, é uma escada: o excesso sobre a taxa-base cresce quanto mais fundo
+é o corte (+4,2 pontos em 20 pregões e +7,3 em 45 no percentil de 2,5%), com o percentil de 30% em
+zero. Contra o placebo conjunto, só um de seis testes passa de 5% — por isso a página diz
+"indício", e os limites inferiores por papel ficam abaixo da taxa-base em quase todas as linhas.
+
+A página da v2 não foi retirada porque conta o caminho da pesquisa; ela abre com o aviso do que os
+números dela valem.
+
 ## Registro de versões — `versoes.py`
 
 `metodo.html` é gerada a partir de `versoes.py`, que guarda, por versão: a pergunta que ela
@@ -146,6 +172,7 @@ python -m pytest -q
 #    `saida/estado.json`, de onde as outras duas tiram o contador da barra de abas.
 #    São os mesmos comandos que o GitHub Actions roda.
 python gerar_alertas.py     # 61 papéis, ~1 minuto
+python gerar_extremos.py    # 61 papéis, ~1 minuto
 python gerar_tela.py        # 70 papéis, ~1 minuto
 python gerar_metodo.py      # sem rede, instantâneo
 
@@ -198,7 +225,13 @@ Nas páginas abertas, confira:
   `estilo_componentes.css` em algum template (aconteceu em 07/09/2026);
 - **o contador ao lado de "Gatilhos" concorda com a tabela** de `alertas.html`. Se divergirem, os
   geradores rodaram fora de ordem;
-- **`alertas.html` e `metodo.html` abrem** pelas abas, sem 404;
+- **a tabela de gatilhos é uma só, com cada papel uma única vez**, e a coluna de horizontes traz o
+  principal em negrito (`45 · 20-10-5-3`). O limite inferior da linha tem de bater com o do
+  horizonte principal em `saida/ranking_do_dia.csv`;
+- **quem está acima tem o horizonte principal maior**; empate desfaz pelo limite inferior;
+- **`alertas.html`, `extremos.html` e `metodo.html` abrem** pelas abas, sem 404;
+- **a faixa extrema mostra as duas seções sempre**, mesmo vazias ("nenhum papel hoje"), e o
+  quadro "Um indício, não um achado" no topo;
 - **nenhum `{{MARCADOR}}` visível** — se aparecer, o template e o gerador saíram de sincronia;
 - **a régua da leitura mestra tem exatamente um segmento escuro**;
 - **a tabela rola na horizontal dentro da moldura**, sem empurrar a página. Abaixo de 982 pixels
