@@ -34,11 +34,17 @@ from nucleo.qualidade_dados import apara_inicio             # corta a cabeça an
 from nucleo.faixas import add_dist_zscore                   # distância ÷ desvio-padrão móvel
 from gerar_alertas import pregoes_necessarios, periodo_do_download   # quanto baixar
 from publicacao import barra_de_abas, copia_estatica, le_estado      # o que as páginas dividem
+from planilha_estudo import grava_estudo_do_papel, link_planilha     # a planilha de estudo
 
 # Colunas da tabela do dia, fixadas para a página saber desenhar o caso vazio.
 COLUNAS = ["ticker", "faixa", "janelas_2_5", "janelas_5", "janelas_medidas",
-           "freq_20", "lim_inf_20", "freq_45", "lim_inf_45", "taxa_base_20", "taxa_base_45",
+           "horizonte", "freq", "taxa_base", "acima_da_base",
            "divisoes_usadas", "inicio_medido", "fim_medido"]
+
+# A ordem de preferência do horizonte exibido: o de 45 pregões, e o de 20 só quando o papel não tem
+# medida em 45. É o mesmo critério da tela de gatilhos — o número da linha é o do prazo mais longo
+# disponível, que é o prazo em que o usuário monta posição.
+HORIZONTES_PREFERIDOS = (45, 20)
 
 
 def escores_de_hoje(prices, janelas, vol_lag, slope_lag):
@@ -88,6 +94,22 @@ def situacao_do_papel(escores, cortes):
             "janelas_medidas": len(medidas)}
 
 
+def janelas_no_extremo(escores, cortes, percentil):
+    """
+    Quais janelas estão hoje no corte do percentil pedido, ou abaixo dele.
+
+    Por que existe: a planilha de estudo de um papel abre uma aba por média em que ele está no
+    extremo hoje — são as que explicam por que ele apareceu na tela.
+
+    Entrada: escores (dicionário {janela: escore de hoje}), cortes (DataFrame do papel), percentil.
+    Saída: lista ordenada das janelas.
+    """
+    c = cortes[np.isclose(cortes["percentil"], percentil)]
+    return sorted(int(w) for w, corte in zip(c["janela"], c["corte"])
+                  if not np.isnan(escores.get(int(w), np.nan)) and not np.isnan(corte)
+                  and escores[int(w)] <= corte)
+
+
 def monta_tabela(situacoes, medidas):
     """
     Junta a situação de hoje com o que o laboratório mediu, e ordena os papéis.
@@ -97,14 +119,16 @@ def monta_tabela(situacoes, medidas):
 
     Um papel entra na faixa de **2,5%** se está abaixo desse corte em pelo menos uma janela; entra
     na de **5%** se não chega ao de 2,5% em nenhuma, mas está abaixo do de 5% em alguma. Os números
-    da linha são os do percentil da faixa em que ele caiu.
+    da linha são os do percentil da faixa em que ele caiu, no horizonte de 45 pregões — ou no de 20,
+    quando o papel não tem medida em 45. A tabela segue o desenho da tela de gatilhos (pedido do
+    usuário em 13/10/2026): uma coluna de limite inferior, uma de taxa-base, sem a frequência crua.
 
     Entrada: situacoes (dicionário {papel: saída de `situacao_do_papel`}), medidas (DataFrame com
-    ticker, percentil, horizonte, lim_inf, taxa_base e o período medido).
+    ticker, percentil, horizonte, freq_dias, taxa_base e o período medido).
     Fase 1: descartar quem não está abaixo de corte nenhum.
     Fase 2: classificar na faixa e buscar as medidas daquele percentil, por horizonte.
-    Fase 3: ordenar — faixa de 2,5% primeiro; depois mais janelas abaixo; depois o limite inferior
-            do horizonte de 45 pregões; por fim o código, para a ordem não depender do arquivo.
+    Fase 3: ordenar — faixa de 2,5% primeiro; depois mais médias no extremo; depois a frequência
+            exibida; por fim o código, para a ordem não depender do arquivo.
     Saída: DataFrame com uma linha por papel na faixa extrema.
     """
     linhas = []
@@ -117,12 +141,17 @@ def monta_tabela(situacoes, medidas):
         m = medidas[(medidas["ticker"] == ticker) & (np.isclose(medidas["percentil"], q))]
         m = m.set_index("horizonte")
         linha = {"ticker": ticker, "faixa": q, **s}
-        for h in (20, 45):
-            # Papel sem medida naquele horizonte fica com a célula ausente, e a página mostra "—".
-            tem = h in m.index
-            linha[f"freq_{h}"] = float(m.loc[h, "freq_dias"]) if tem else np.nan
-            linha[f"lim_inf_{h}"] = float(m.loc[h, "lim_inf"]) if tem else np.nan
-            linha[f"taxa_base_{h}"] = float(m.loc[h, "taxa_base"]) if tem else np.nan
+        # O horizonte da linha: o de 45 pregões; na falta dele, o de 20. Sem nenhum dos dois, as
+        # células ficam ausentes e a página mostra "—" — nunca um número inventado.
+        h = next((x for x in HORIZONTES_PREFERIDOS
+                  if x in m.index and not pd.isna(m.loc[x, "freq_dias"])), None)
+        linha["horizonte"] = h if h is not None else np.nan
+        linha["freq"] = float(m.loc[h, "freq_dias"]) if h is not None else np.nan
+        linha["taxa_base"] = float(m.loc[h, "taxa_base"]) if h is not None else np.nan
+        # O critério de exibição (usuário, 13/10/2026): o papel só vira destaque se, no passado
+        # dele, estar nesta faixa veio com retorno positivo MAIS vezes que num dia qualquer. Papel
+        # sem medida não tem como cumprir o critério, e por isso também não é destaque.
+        linha["acima_da_base"] = bool(h is not None and linha["freq"] > linha["taxa_base"])
         # O período medido é o mesmo nos dois horizontes, a menos da cauda sem retorno futuro.
         linha["divisoes_usadas"] = int(m["divisoes_usadas"].max()) if len(m) else 0
         linha["inicio_medido"] = str(m["inicio_medido"].min()) if len(m) else ""
@@ -132,7 +161,7 @@ def monta_tabela(situacoes, medidas):
         return pd.DataFrame(columns=COLUNAS)
     # Fase 3 e Saída: a ordem determinística.
     return (pd.DataFrame(linhas)[COLUNAS]
-            .sort_values(["faixa", "janelas_2_5", "janelas_5", "lim_inf_45", "ticker"],
+            .sort_values(["faixa", "janelas_2_5", "janelas_5", "freq", "ticker"],
                          ascending=[True, False, False, False, True], na_position="last")
             .reset_index(drop=True))
 
@@ -142,8 +171,11 @@ def _pct(x):
     return "—" if pd.isna(x) else f"{100 * x:.1f}%"
 
 
-def _linha_html(r):
+def _linha_html(r, planilhas=()):
     """Uma linha da tabela (helper de renderização)."""
+    # O link da planilha de estudo só aparece quando o arquivo foi de fato gravado.
+    dados = (link_planilha(f"extremos_{r['ticker']}.xlsx", r["ticker"])
+             if r["ticker"] in planilhas else "<span class='posicao'>—</span>")
     # A contagem na faixa do papel em destaque; a outra, apagada ao lado, quando acrescenta algo.
     if np.isclose(r["faixa"], 0.025):
         janelas = (f"<b>{r['janelas_2_5']}</b> de {r['janelas_medidas']}"
@@ -154,37 +186,39 @@ def _linha_html(r):
     periodo = (f"<span class='posicao'>{str(r['inicio_medido'])[:4]}–{str(r['fim_medido'])[:4]}"
                f"</span> <span class='posicao'>({r['divisoes_usadas']})</span>"
                if r["inicio_medido"] else "<span class='posicao'>sem medida</span>")
+    # O horizonte a que o limite inferior e a taxa-base da linha se referem.
+    horizonte = "—" if pd.isna(r["horizonte"]) else f"<b>{int(r['horizonte'])}</b>"
     return (f"<tr>"
             f"<td class='esq papel'>{r['ticker']}</td>"
             f"<td class='esq'>{janelas}</td>"
-            f"<td><span class='destaque'>{_pct(r['freq_20'])}</span> "
-            f"<span class='posicao'>piso {_pct(r['lim_inf_20'])}</span></td>"
-            f"<td><span class='destaque'>{_pct(r['freq_45'])}</span> "
-            f"<span class='posicao'>piso {_pct(r['lim_inf_45'])}</span></td>"
-            f"<td>{_pct(r['taxa_base_20'])} <span class='posicao'>·</span> {_pct(r['taxa_base_45'])}</td>"
+            f"<td class='esq'>{horizonte}</td>"
+            f"<td class='destaque'>{_pct(r['freq'])}</td>"
+            f"<td>{_pct(r['taxa_base'])}</td>"
             f"<td class='esq'>{periodo}</td>"
+            f"<td class='esq'>{dados}</td>"
             f"</tr>")
 
 
-def _secao_html(titulo, nota, d):
+def _secao_html(titulo, nota, d, planilhas=()):
     """Uma das duas seções da página, com a tabela ou o aviso de que está vazia (helper)."""
     cabeca = f"<div class='secao'><h2>{titulo}</h2><span class='nota'>{nota}</span></div>"
     # Seção vazia diz isso com todas as letras: é o caso comum, e não pode parecer falha.
     if d.empty:
         return cabeca + ("<div class='quadro'><table><tbody><tr><td class='esq'>"
-                         "<span class='posicao'>nenhum papel hoje</span></td></tr></tbody></table></div>")
-    linhas = "".join(_linha_html(r) for _, r in d.iterrows())
+                         "<span class='posicao'>nenhum destaque hoje</span></td></tr></tbody></table></div>")
+    linhas = "".join(_linha_html(r, planilhas) for _, r in d.iterrows())
     return (cabeca + "<div class='quadro'><table><thead><tr>"
             "<th class='esq'>papel</th>"
-            "<th class='esq'>janelas abaixo do corte</th>"
-            "<th>20 pregões <span class='sub2'>(frequência · limite inferior)</span></th>"
-            "<th>45 pregões <span class='sub2'>(frequência · limite inferior)</span></th>"
-            "<th>taxa-base <span class='sub2'>(20 · 45 pregões)</span></th>"
+            "<th class='esq'>médias móveis no extremo <span class='sub2'>(das acompanhadas)</span></th>"
+            "<th class='esq'>horizonte <span class='sub2'>(pregões)</span></th>"
+            "<th>frequência</th>"
+            "<th>taxa-base</th>"
             "<th class='esq'>período medido <span class='sub2'>(épocas)</span></th>"
+            "<th class='esq'>dados</th>"
             f"</tr></thead><tbody>{linhas}</tbody></table></div>")
 
 
-def monta_pagina(template, tabela, data_pregao, n_papeis, n_alerta=None):
+def monta_pagina(template, tabela, data_pregao, n_papeis, n_alerta=None, planilhas=()):
     """
     Preenche o template: a barra de abas, o resumo do dia e as duas seções.
 
@@ -192,30 +226,44 @@ def monta_pagina(template, tabela, data_pregao, n_papeis, n_alerta=None):
 
     Entrada: template (string com os marcadores), tabela (saída de `monta_tabela`), data_pregao,
     n_papeis (quantos foram verificados), n_alerta (contador da aba de gatilhos; None se não medido).
-    Fase 1: o resumo do dia — quantos papéis em cada faixa.
+    Fase 1: separar os destaques (frequência acima da taxa-base) e montar o resumo do dia.
     Fase 2: as duas seções, a de 2,5% primeiro.
     Fase 3: os marcadores.
     Saída: string com o HTML completo.
     """
+    # Só vira destaque quem tem frequência acima da própria taxa-base. Os demais estão na faixa
+    # hoje, mas o passado deles não mostrou vantagem ali — ficam no arquivo do dia e fora da tela.
+    na_faixa = len(tabela)
+    tabela = tabela[tabela["acima_da_base"].astype(bool)] if na_faixa else tabela
+    omitidos = na_faixa - len(tabela)
     d25 = tabela[np.isclose(tabela["faixa"].astype(float), 0.025)] if len(tabela) else tabela
     d5 = tabela[np.isclose(tabela["faixa"].astype(float), 0.05)] if len(tabela) else tabela
     # Fase 1: o título diz o estado do dia sem adjetivo.
     if tabela.empty:
-        titulo = "Nenhum papel na faixa extrema hoje"
-        selo = "sem papel"
+        titulo = "Nenhum destaque hoje"
+        selo = "sem destaque"
     else:
-        pp = "papéis" if len(tabela) > 1 else "papel"
+        pp = "destaques" if len(tabela) > 1 else "destaque"
         titulo = f"{len(tabela)} {pp} na faixa extrema"
         selo = f"{len(d25)} em 2,5% · {len(d5)} em 5%"
+    # Quem ficou de fora é dito com número, para o dia vazio não esconder que houve papel na faixa.
+    if omitidos:
+        pl = "papéis estão" if omitidos > 1 else "papel está"
+        nota = (f"{omitidos} {pl} na faixa extrema hoje, mas sem destaque: no histórico, a "
+                f"frequência não superou a taxa-base.")
+    else:
+        nota = "Nenhum papel está na faixa extrema hoje." if na_faixa == 0 else ""
     # Fase 2: as duas seções.
     corpo = (_secao_html("Abaixo do percentil de 2,5%",
                          "os 2,5% de dias mais afastados para baixo da média, na história do papel",
-                         d25)
+                         d25, planilhas)
              + _secao_html("Abaixo do percentil de 5%",
-                           "não chegam ao corte de 2,5% em nenhuma janela, mas passam do de 5%", d5))
+                           "não chegam ao corte de 2,5% em nenhuma janela, mas passam do de 5%", d5,
+                           planilhas))
     # Fase 3: os marcadores. A barra vem de `publicacao` para ser igual em todas as páginas.
     for marca, valor in (("ABAS", barra_de_abas("extremos", n_alerta)), ("TITULO", titulo),
-                         ("SELO", selo), ("CORPO", corpo), ("DATA_PREGAO", data_pregao),
+                         ("SELO", selo), ("NOTA", nota), ("CORPO", corpo),
+                         ("DATA_PREGAO", data_pregao),
                          ("N_PAPEIS", str(n_papeis))):
         template = template.replace("{{" + marca + "}}", valor)
     return template
@@ -247,7 +295,7 @@ def main() -> None:
     print("  cortes vindos do laboratório, medidos sobre a história completa de cada papel")
 
     # Fase 2: um papel por vez.
-    situacoes, falhas, data_pregao = {}, [], ""
+    situacoes, falhas, data_pregao, escores_do_dia = {}, [], "", {}
     barra = tqdm(papeis, desc="papéis", unit="papel", ncols=78, file=sys.stdout)
     for t in barra:
         c = cortes[cortes["ticker"] == t]
@@ -262,7 +310,8 @@ def main() -> None:
             barra.write(f"  ERRO {t:<8} {erro}")
             continue
         data_pregao = max(data_pregao, str(prices.index[-1].date()))
-        s = situacao_do_papel(escores_de_hoje(prices, janelas, config.VOL_LAG, config.SLOPE_LAG), c)
+        escores_do_dia[t] = escores_de_hoje(prices, janelas, config.VOL_LAG, config.SLOPE_LAG)
+        s = situacao_do_papel(escores_do_dia[t], c)
         situacoes[t] = s
         # Só quem está na faixa ganha linha no console.
         if s["janelas_5"]:
@@ -272,13 +321,24 @@ def main() -> None:
 
     # Fase 3: a tabela, a página e os estáticos.
     tabela = monta_tabela(situacoes, medidas)
-    print(f"\n  {len(tabela)} papéis na faixa extrema")
+    destaques = int(tabela["acima_da_base"].astype(bool).sum()) if len(tabela) else 0
+    print(f"\n  {len(tabela)} papéis na faixa extrema, {destaques} com frequência acima da taxa-base")
     if falhas:
         print(f"  {len(falhas)} papéis falharam no download: {', '.join(falhas)}")
     saida = raiz / config.DIR_SAIDA
     saida.mkdir(parents=True, exist_ok=True)
+    # Uma planilha de estudo por DESTAQUE: uma aba para cada média em que o papel está no extremo
+    # hoje, no percentil da faixa dele e no horizonte da linha.
+    planilhas = set()
+    for _, r in tabela[tabela["acima_da_base"].astype(bool)].iterrows() if len(tabela) else []:
+        t = r["ticker"]
+        no_extremo = janelas_no_extremo(escores_do_dia[t], cortes[cortes["ticker"] == t], r["faixa"])
+        if grava_estudo_do_papel(saida / "dados", f"extremos_{t}.xlsx", t, no_extremo,
+                                 r["horizonte"], float(r["faixa"])):
+            planilhas.add(t)
     html = monta_pagina((raiz / "template_extremos.html").read_text(encoding="utf-8"), tabela,
-                        data_pregao, len(papeis), le_estado(saida).get("papeis_com_alerta"))
+                        data_pregao, len(papeis), le_estado(saida).get("papeis_com_alerta"),
+                        planilhas)
     (saida / "extremos.html").write_text(html, encoding="utf-8", newline="\n")
     copia_estatica(raiz, saida)
     tabela.to_csv(saida / "faixa_extrema_do_dia.csv", index=False, lineterminator="\n")

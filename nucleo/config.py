@@ -116,5 +116,13 @@ ARQUIVO_FAIXA_MEDIDAS = "estudo/faixa_extrema_medidas.csv"
 VOL_LAG = EXTREMOS_VOL_LAG        # 252 — janela do desvio-padrão móvel
 N_FAIXAS = EXTREMOS_N_FAIXAS      # 10  — decis
 
+# As divisões da validação encadeada do laboratório (`SETUP_DIVISOES` em `robusta_ml/config.py`).
+# As telas não medem nada com elas — os números vêm prontos de `estudo/`. Elas estão aqui para as
+# PLANILHAS DE ESTUDO (`planilha_estudo.py`) poderem mostrar, linha a linha, qual trecho foi treino
+# e qual foi teste em cada divisão.
+SETUP_DIVISOES = [("2006-01-01", "2010-01-01"), ("2010-01-01", "2014-01-01"),
+                  ("2014-01-01", "2018-01-01"), ("2018-01-01", "2022-01-01"),
+                  ("2022-01-01", "2027-01-01")]
+
 # Onde as páginas são gravadas.
 DIR_SAIDA = "saida"

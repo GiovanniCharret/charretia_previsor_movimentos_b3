@@ -10,7 +10,7 @@ O repositório é escrito em português (código, docstrings, comentários, comm
 python -m venv .venv; .venv\Scripts\activate
 pip install -r requirements.txt pytest
 
-python -m pytest -q                        # os 97 testes (offline, preços sintéticos, segundos)
+python -m pytest -q                        # os 115 testes (offline, preços sintéticos, segundos)
 python -m pytest tests/test_gerar_tela.py::TestClassificaEvidencia -q     # uma classe
 python -m pytest -q -k "regua"                                            # um teste por nome
 
@@ -123,6 +123,23 @@ indício medido **por dia** nos percentis de 2,5% e 5%. Regras que não devem se
   no topo de `alertas.html`, que explica que a medida da v2 não passou no controle.
 - Os cortes e as medidas vêm de `estudo/faixa_extrema_cortes.csv` e `faixa_extrema_medidas.csv`,
   exportados por `robusta_ml.faixa_extrema`. A tela não recalcula corte nem frequência.
+
+### As planilhas de estudo das telas v2 e v3
+
+`planilha_estudo.py` grava `saida/dados/gatilhos_{TICKER}.xlsx` e `extremos_{TICKER}.xlsx` para os
+papéis exibidos, com link na última coluna das duas tabelas (pedido do usuário, que é estudante e
+quer ver o arranjo de treino e teste). `monta_estudo` é pura: devolve a série linha a linha de uma
+janela — com `divisao`, `conjunto`, `treino_ate`, `corte_usado`, `na_faixa`, `episodio` — e o
+resumo por divisão. Pontos que não são óbvios:
+
+- **É uma reimplementação para estudo** da divisão por calendário do laboratório (treino acumulado,
+  embargo igual ao horizonte, corte só do treino). Os números da tela não saem dela. Se o
+  laboratório mudar a regra, atualize aqui à mão.
+- **Só baixa a história completa dos papéis exibidos**, depois de montada a tabela do dia.
+- **O link só aparece para a planilha que foi gravada** (`planilhas`, passado a `monta_pagina`).
+  Falha no download deixa o papel com "—", e a página sai.
+- O resumo traz **as duas contas lado a lado** — frequência por dia e episódios positivos —, que é o
+  jeito mais direto de ver por que a v2 e a v3 dão números diferentes.
 
 ### O método
 

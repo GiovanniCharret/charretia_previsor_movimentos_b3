@@ -45,6 +45,7 @@ from nucleo.features_mma import build_features              # distância até a 
 from nucleo.qualidade_dados import apara_inicio             # corta a cabeça anterior à listagem
 from nucleo.faixas import add_dist_zscore                    # escore padronizado
 from publicacao import barra_de_abas, copia_estatica, grava_estado   # o que as 3 páginas dividem
+from planilha_estudo import grava_estudo_do_papel, link_planilha     # a planilha de estudo
 
 
 def pregoes_necessarios(janela_maxima, vol_lag, folga):
@@ -164,7 +165,8 @@ def agrupa_faixas_contiguas(janelas):
 
 # Colunas da tabela de alertas, fixadas para a página saber desenhar o caso vazio.
 COLUNAS_ALERTA = ["posicao_papel", "total_papeis", "ticker", "horizonte", "janela_de", "janela_ate",
-                  "n_setups", "episodios", "protecao", "prot_lo", "taxa_base",
+                  # A janela do melhor setup da faixa: é a que a planilha de estudo destrincha.
+                  "janela_ref", "n_setups", "episodios", "protecao", "prot_lo", "taxa_base",
                   # A janela de tempo que sustenta a taxa-base. Sem ela, 60,4% medidos em oito anos
                   # e 53,0% medidos em vinte aparecem lado a lado como se fossem comparáveis.
                   "divisoes_usadas", "inicio_medido", "fim_medido"]
@@ -216,7 +218,7 @@ def monta_alertas(aprovados, estados, total_papeis=None):
                 "posicao_papel": int(melhor["posicao_papel"]), "total_papeis": total_papeis,
                 "ticker": ticker,
                 "horizonte": int(h), "janela_de": int(inicio), "janela_ate": int(fim),
-                "n_setups": int(len(faixa)), "episodios": int(melhor["episodios"]),
+                "janela_ref": int(melhor["janela"]), "n_setups": int(len(faixa)), "episodios": int(melhor["episodios"]),
                 "protecao": float(melhor["protecao"]), "prot_lo": float(melhor["prot_lo"]),
                 "taxa_base": float(melhor["taxa_base"]),
                 "divisoes_usadas": int(melhor["divisoes_usadas"]),
@@ -232,7 +234,7 @@ def monta_alertas(aprovados, estados, total_papeis=None):
 # Colunas da tabela ranqueada — uma linha por papel. Fixadas para a página saber desenhar o vazio.
 COLUNAS_RANQUEADAS = ["posicao_papel", "total_papeis", "ticker", "peso",
                       "horizonte_principal", "horizontes",
-                      "janela_de", "janela_ate", "n_setups",
+                      "janela_de", "janela_ate", "janela_ref", "n_setups",
                       "episodios", "prot_lo", "taxa_base",
                       "divisoes_usadas", "inicio_medido", "fim_medido"]
 
@@ -291,6 +293,8 @@ def ranqueia_papeis(alertas):
             # Os demais, já na ordem de exibição, como texto para caber numa célula.
             "horizontes": "-".join(str(int(h)) for h in hs[1:]),
             "janela_de": int(melhor["janela_de"]), "janela_ate": int(melhor["janela_ate"]),
+            # A janela que a planilha de estudo abre; na falta dela, a primeira da faixa.
+            "janela_ref": int(melhor.get("janela_ref", melhor["janela_de"])),
             "n_setups": int(melhor["n_setups"]), "episodios": int(melhor["episodios"]),
             "prot_lo": float(melhor["prot_lo"]), "taxa_base": float(melhor["taxa_base"]),
             "divisoes_usadas": int(melhor["divisoes_usadas"]),
@@ -303,8 +307,11 @@ def ranqueia_papeis(alertas):
             .reset_index(drop=True))
 
 
-def _linha_html(r):
+def _linha_html(r, planilhas=()):
     """Uma linha da tabela de alertas (helper de renderização)."""
+    # O link da planilha de estudo só aparece quando o arquivo foi de fato gravado.
+    dados = (link_planilha(f"gatilhos_{r['ticker']}.xlsx", r["ticker"])
+             if r["ticker"] in planilhas else "<span class='posicao'>—</span>")
     # Faixa de uma janela só aparece como número simples; faixa larga mostra o intervalo.
     faixa = (f"{r['janela_de']}" if r["janela_de"] == r["janela_ate"]
              else f"{r['janela_de']}–{r['janela_ate']}")
@@ -326,10 +333,11 @@ def _linha_html(r):
             f"<td class='destaque'>{100 * r['prot_lo']:.1f}%</td>"
             f"<td>{100 * r['taxa_base']:.1f}%</td>"
             f"<td class='esq'><span class='posicao'>{periodo}</span>{epocas}</td>"
+            f"<td class='esq'>{dados}</td>"
             f"</tr>")
 
 
-def monta_pagina(template, alertas, data_pregao, n_papeis):
+def monta_pagina(template, alertas, data_pregao, n_papeis, planilhas=()):
     """
     Preenche o template: a barra de abas, o cabeçalho da leitura e a tabela única de papéis.
 
@@ -342,7 +350,8 @@ def monta_pagina(template, alertas, data_pregao, n_papeis):
     tabela só, ordenada pelo alcance dos horizontes, é a leitura que ele de fato faz.
 
     Entrada: template (string com os marcadores), alertas (DataFrame de `monta_alertas`),
-    data_pregao, n_papeis.
+    data_pregao, n_papeis, planilhas (papéis cuja planilha de estudo foi gravada; só eles recebem
+    o link de download).
     Fase 1: sem nenhum alerta, desenhar o vazio — é o caso COMUM e precisa ser explícito, nunca
             parecer que a página quebrou.
     Fase 2: com alertas, reduzir a um papel por linha e montar o cabeçalho mais a tabela única.
@@ -368,7 +377,7 @@ def monta_pagina(template, alertas, data_pregao, n_papeis):
         papeis = ranqueia_papeis(alertas)
         pp = "papéis" if papeis_alerta > 1 else "papel"
         verbo = "estão" if papeis_alerta > 1 else "está"
-        linhas = "".join(_linha_html(r) for _, r in papeis.iterrows())
+        linhas = "".join(_linha_html(r, planilhas) for _, r in papeis.iterrows())
         corpo = (
             "<section class='mestra'><div class='mestra-topo'><div>"
             "<div class='rotulo'>gatilhos acionados no fechamento</div>"
@@ -385,6 +394,7 @@ def monta_pagina(template, alertas, data_pregao, n_papeis):
             "<th class='esq'>horizontes <span class='sub2'>(o principal em negrito)</span></th>"
             "<th>limite inferior</th><th>taxa-base</th>"
             "<th class='esq'>período medido <span class='sub2'>(épocas)</span></th>"
+            "<th class='esq'>dados</th>"
             f"</tr></thead><tbody>{linhas}</tbody></table></div>")
 
     # Fase 3: os marcadores. A barra vem de `publicacao` para ser idêntica nas três páginas.
@@ -481,9 +491,16 @@ def main() -> None:
 
     # Fase 4: a página, os estáticos e o estado do dia.
     saida = raiz / config.DIR_SAIDA
-    html = monta_pagina((raiz / "template_alertas.html").read_text(encoding="utf-8"),
-                        alertas, data_pregao, len(papeis))
     saida.mkdir(parents=True, exist_ok=True)
+    # Uma planilha de estudo por papel exibido: a série da janela do melhor setup, no horizonte
+    # principal, com o treino e o teste de cada divisão. O percentil é o do decil que dispara.
+    percentil = (config.FAIXA_ALVO + 1) / config.N_FAIXAS
+    planilhas = {r["ticker"] for _, r in ranqueia_papeis(alertas).iterrows()
+                 if grava_estudo_do_papel(saida / "dados", f"gatilhos_{r['ticker']}.xlsx",
+                                          r["ticker"], [r["janela_ref"]],
+                                          r["horizonte_principal"], percentil)}
+    html = monta_pagina((raiz / "template_alertas.html").read_text(encoding="utf-8"),
+                        alertas, data_pregao, len(papeis), planilhas)
     (saida / "alertas.html").write_text(html, encoding="utf-8", newline="\n")
     copia_estatica(raiz, saida)
     # Os dois arquivos: o detalhe por faixa, que é o rastro da evidência, e a tabela ranqueada, que

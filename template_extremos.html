@@ -29,8 +29,8 @@
         <div class="rotulo">faixa extrema — fechamento do dia</div>
         <h1>{{TITULO}}</h1>
         <p class="sub">Papéis que fecharam hoje entre os dias mais afastados para baixo da própria
-        média, na história de cada um. A lista mostra quem está lá; o que isso vale está no quadro
-        abaixo.</p>
+        média, na história de cada um, <b>e em que isso veio acompanhado de retorno positivo mais
+        vezes que num dia qualquer do próprio papel</b>. {{NOTA}}</p>
       </div>
       <div class="veredito">{{SELO}}</div>
     </div>
@@ -45,8 +45,9 @@
       no percentil de 2,5%; 3,1 e 5,2 no de 5%. Quanto mais fundo o corte, maior o excesso, e o
       percentil de 30% fica em zero. Contra o acaso, porém, só um de seis testes passa do limiar
       de 5% — os papéis caem juntos, então há poucas quedas independentes para medir. <b>Papel a
-      papel o efeito não é detectável</b>: os limites inferiores da tabela ficam abaixo da
-      taxa-base em quase todas as linhas, e é isso mesmo que eles devem mostrar.</p>
+      papel o efeito não é detectável</b>: um papel tem poucas quedas extremas em vinte anos, então a
+      frequência de cada linha carrega muita incerteza. Ela serve para escolher o que olhar, não
+      como garantia.</p>
     </div>
   </section>
 
@@ -63,28 +64,38 @@
           de 2,5% é estar entre os 2,5% de dias mais afastados para baixo que o papel já teve.</dd>
         </div>
         <div class="verbete">
-          <dt>janelas abaixo do corte</dt>
-          <dd>São nove médias móveis, de 5 a 200 pregões, fixadas antes do teste. O número diz em
-          quantas delas o papel está hoje abaixo do corte. Não existe janela vencedora: mais
-          janelas significa que o afastamento aparece no curto e no longo prazo ao mesmo tempo.</dd>
+          <dt>médias móveis no extremo</dt>
+          <dd>O papel é acompanhado por nove médias móveis, de 5 a 200 pregões (5, 10, 20, 30, 45,
+          60, 90, 130 e 200). Para cada uma, verifica-se se o fechamento de hoje está entre os dias
+          mais afastados para baixo dela. <b>"2 de 9"</b> quer dizer que isso acontece em duas das
+          nove médias. Quanto maior o primeiro número, mais o afastamento aparece no curto e no
+          longo prazo ao mesmo tempo. O segundo número é menor que 9 quando o papel ainda não tem
+          história para as médias mais longas.</dd>
+        </div>
+        <div class="verbete">
+          <dt>horizonte</dt>
+          <dd>O prazo a que a frequência e a taxa-base da linha se referem: <b>45 pregões</b>,
+          ou 20 quando o papel não tem medida em 45.</dd>
         </div>
         <div class="verbete">
           <dt>frequência</dt>
-          <dd>De cada 100 <b>dias</b> em que o papel esteve nessa faixa, em quantos o retorno dos
-          20 (ou 45) pregões seguintes foi positivo. Conta dias, e não episódios: é a medida que não
-          fabrica vantagem em preços sem memória.</dd>
-        </div>
-        <div class="verbete">
-          <dt>limite inferior</dt>
-          <dd>O piso do intervalo de confiança de 95% da frequência. Dias seguidos na faixa não são
-          observações independentes, então o intervalo usa o número de <em>episódios</em> como
-          tamanho de amostra — e um papel tem poucos episódios extremos em vinte anos. Por isso o
-          piso fica muito abaixo da frequência: é o tamanho real da incerteza de um papel sozinho.</dd>
+          <dd>De cada 100 <b>dias</b> em que o papel esteve nessa faixa, em quantos o retorno
+          seguinte foi positivo. Conta dias, e não episódios: é a medida que não fabrica vantagem em
+          preços sem memória. <b>Só aparece na tabela o papel cuja frequência supera a taxa-base
+          dele</b>; os demais podem estar na faixa hoje, mas o histórico não mostrou vantagem.</dd>
         </div>
         <div class="verbete">
           <dt>taxa-base</dt>
           <dd>A frequência de retorno seguinte positivo num dia <em>qualquer</em> daquele papel. É a
-          régua: o indício é a frequência da faixa ficar acima dela.</dd>
+          régua contra a qual o indício foi medido, no mesmo horizonte da linha.</dd>
+        </div>
+        <div class="verbete">
+          <dt>dados</dt>
+          <dd>A planilha de estudo do papel, para abrir no Excel. Tem uma aba para cada média em que
+          ele está no extremo hoje, com a série linha a linha — fechamento, média, distância, escore
+          e retorno seguinte — e a coluna <b>conjunto</b>, que mostra qual trecho foi <em>teste</em>
+          e com que corte, calculado só no passado. A aba <b>divisões</b> resume cada época e a aba
+          <b>dicionário</b> explica as colunas.</dd>
         </div>
         <div class="verbete">
           <dt>período medido</dt>

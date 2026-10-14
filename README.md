@@ -37,7 +37,9 @@ mede nada novo, apenas se aplica o que já foi medido e validado fora da amostra
 | `estudo/faixa_extrema_cortes.csv`, `estudo/faixa_extrema_medidas.csv` | os limiares e as frequências da faixa extrema, **exportados pelo laboratório** por `robusta_ml.faixa_extrema` (ver `estudo/PROVENIENCIA_FAIXA_EXTREMA.md`) |
 | `nucleo/` | cópia do que as telas usam do laboratório (ver *Proveniência do núcleo*) |
 | `saida/*.html` | as três páginas geradas |
+| `planilha_estudo.py` | monta a planilha de estudo das telas de gatilhos e da faixa extrema: a série linha a linha, com o treino e o teste de cada divisão |
 | `saida/dados/{TICKER}.xlsx` | uma planilha de estudo por papel visível na triagem |
+| `saida/dados/gatilhos_{TICKER}.xlsx`, `saida/dados/extremos_{TICKER}.xlsx` | uma planilha de estudo por papel exibido nas telas de gatilhos e da faixa extrema |
 | `saida/estado.json` | ligação entre geradores: quantos papéis dispararam hoje |
 | `saida/ranking_do_dia.csv` | o que a tela de gatilhos exibe: um papel por linha, já ordenado |
 | `saida/alertas.csv` | o detalhe por trás do ranking: uma linha por papel, horizonte e faixa de janelas |
@@ -157,6 +159,27 @@ BOVA11, por exemplo, o treino termina em 2020-10-23, seguem exatamente 45 linhas
 tamanho do horizonte) e o teste começa em 2021-01-04. As 45 últimas linhas ficam `sem_retorno`
 porque o retorno de 45 pregões à frente ainda não existe — e é entre elas que está o pregão de hoje,
 o que a tela reporta.
+
+## As planilhas de estudo das telas de gatilhos e da faixa extrema
+
+Cada papel exibido nessas duas telas ganha, na última coluna, um arquivo do Excel. Ele existe para
+**ver** o arranjo de treino e teste, que nessas telas é a validação encadeada (várias divisões), e
+não a divisão única da triagem:
+
+- **uma aba por janela** (`janela 20`, por exemplo), com `Close`, a média, a distância, o escore, o
+  retorno seguinte e as colunas do arranjo: `divisao` (em qual divisão a linha é testada),
+  `conjunto` (`teste`, `só treino`, `aquecimento` ou `sem_retorno`), `treino_ate` e `corte_usado`
+  (o limiar calculado só com as linhas anteriores), `na_faixa` e `episodio`;
+- **a aba `divisões`**, com uma linha por divisão: de onde até onde foi o treino, o corte, quantos
+  dias ficaram na faixa, a frequência por dia (a conta da faixa extrema) e os episódios positivos
+  (a conta dos gatilhos), ao lado da taxa-base;
+- **a aba `dicionário`**, que explica cada coluna.
+
+Na tela de gatilhos a aba é a da janela do melhor setup da faixa, no horizonte principal. Na faixa
+extrema há uma aba para cada média em que o papel está no extremo hoje. O cálculo repete, para um
+papel, o que o laboratório faz; os números da tela continuam vindo de `estudo/`. Para isso o gerador
+baixa a história completa dos papéis exibidos — só deles —, e um papel cuja planilha falhe fica sem
+o link em vez de derrubar a página.
 
 ## Rodar localmente
 
