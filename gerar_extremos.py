@@ -37,7 +37,7 @@ from publicacao import barra_de_abas, copia_estatica, le_estado      # o que as 
 from planilha_estudo import grava_estudo_do_papel, link_planilha     # a planilha de estudo
 
 # Colunas da tabela do dia, fixadas para a página saber desenhar o caso vazio.
-COLUNAS = ["ticker", "faixa", "janelas_2_5", "janelas_5", "janelas_medidas",
+COLUNAS = ["ticker", "faixa", "janelas", "janelas_2_5", "janelas_5", "janelas_medidas",
            "horizonte", "freq", "taxa_base", "acima_da_base",
            "divisoes_usadas", "inicio_medido", "fim_medido"]
 
@@ -76,10 +76,12 @@ def situacao_do_papel(escores, cortes):
     Entrada: escores (dicionário {janela: escore de hoje}), cortes (DataFrame do papel com as
     colunas janela, percentil e corte).
     Fase 1: só entram as janelas que têm escore hoje E corte medido.
-    Fase 2: contar as que estão no corte de 2,5% ou abaixo, e as que estão no de 5% ou abaixo.
-    Saída: dicionário com as duas contagens e o total de janelas medidas.
+    Fase 2: contar as que estão no corte de 2,5% ou abaixo, e as que estão no de 5% ou abaixo, e
+            guardar QUAIS são — a tabela mostra as janelas, e não só quantas.
+    Saída: dicionário com as duas contagens, as duas listas de janelas, a lista das janelas
+    acompanhadas e o total delas.
     """
-    medidas, abaixo = set(), {0.025: 0, 0.05: 0}
+    medidas, abaixo, quais = set(), {0.025: 0, 0.05: 0}, {0.025: [], 0.05: []}
     for _, c in cortes.iterrows():
         z = escores.get(int(c["janela"]), np.nan)
         # Fase 1: sem escore ou sem corte, a janela não conta nem a favor nem contra.
@@ -89,9 +91,45 @@ def situacao_do_papel(escores, cortes):
         # Fase 2: estar no corte ou abaixo dele.
         if z <= c["corte"]:
             abaixo[float(c["percentil"])] += 1
+            quais[float(c["percentil"])].append(int(c["janela"]))
     # Quem está abaixo de 2,5% também está abaixo de 5%, por construção dos cortes.
     return {"janelas_2_5": abaixo[0.025], "janelas_5": abaixo[0.05],
-            "janelas_medidas": len(medidas)}
+            "janelas_medidas": len(medidas),
+            "lista_2_5": sorted(quais[0.025]), "lista_5": sorted(quais[0.05]),
+            "acompanhadas": sorted(medidas)}
+
+
+def faixa_de_janelas(janelas, acompanhadas):
+    """
+    Escreve as janelas no extremo como faixas, no mesmo formato da tela de gatilhos: "10–30 (3)".
+
+    Por que existe: o usuário precisa ver EM QUE médias o padrão apareceu, e não só quantas — a
+    contagem "1 de 9" escondia a janela. Médias vizinhas na lista acompanhada viram uma faixa só,
+    porque compartilham boa parte dos dados; o número entre parênteses é quantas médias a faixa
+    reúne. As nove médias não são números seguidos (5, 10, 20, 30, 45, 60, 90, 130, 200), então
+    "vizinhas" quer dizer vizinhas NESSA lista: 10, 20 e 30 formam "10–30 (3)".
+
+    Entrada: janelas (as que estão no extremo), acompanhadas (todas as que têm medida hoje, em ordem).
+    Fase 1: a posição de cada janela na lista acompanhada.
+    Fase 2: quebrar em faixas sempre que a posição pular.
+    Saída: texto, como "45" ou "10–30 (3) · 90"; vazio quando não há janela.
+    """
+    # Fase 1: as posições, na ordem da lista acompanhada.
+    pos = sorted(acompanhadas.index(w) for w in janelas if w in acompanhadas)
+    if not pos:
+        return ""
+    faixas, inicio, anterior = [], pos[0], pos[0]
+    # Fase 2: uma faixa nova a cada salto de posição.
+    for p in pos[1:] + [None]:
+        if p is None or p != anterior + 1:
+            de, ate, n = acompanhadas[inicio], acompanhadas[anterior], anterior - inicio + 1
+            faixas.append(f"{de}" if n == 1 else f"{de}–{ate} ({n})")
+            if p is not None:
+                inicio = p
+        if p is not None:
+            anterior = p
+    # Saída: as faixas, separadas por um ponto.
+    return " · ".join(faixas)
 
 
 def janelas_no_extremo(escores, cortes, percentil):
@@ -110,7 +148,37 @@ def janelas_no_extremo(escores, cortes, percentil):
                   and escores[int(w)] <= corte)
 
 
-def monta_tabela(situacoes, medidas):
+def _medida_das_janelas(por_janela, ticker, q, janelas):
+    """
+    A frequência e a taxa-base de um papel, só nas janelas em que ele está no extremo hoje.
+
+    Por que existe: a coluna "janela" passou a mostrar EM QUAIS médias o papel disparou, e a
+    frequência ao lado precisa ser a dessas médias — a média das nove, que é o número do teste
+    conjunto, seria lida como se fosse delas (pedido do usuário em 19/10/2026).
+
+    Entrada: por_janela (DataFrame do laboratório, uma linha por papel, percentil, horizonte e
+    janela), ticker, q (percentil da faixa), janelas (as que estão no extremo hoje).
+    Fase 1: as linhas daquele papel, percentil e janelas.
+    Fase 2: o horizonte de 45 pregões; na falta dele em todas as janelas, o de 20.
+    Fase 3: a média entre as janelas e o período que as sustenta.
+    Saída: dicionário com horizonte, freq, taxa_base e o período; None quando não há medida.
+    """
+    # Fase 1: só as janelas que dispararam hoje.
+    m = por_janela[(por_janela["ticker"] == ticker) & np.isclose(por_janela["percentil"], q)
+                   & por_janela["janela"].isin(janelas)]
+    # Fase 2: a preferência de horizonte da tela.
+    h = next((x for x in HORIZONTES_PREFERIDOS if (m["horizonte"] == x).any()), None)
+    if h is None:
+        return None
+    m = m[m["horizonte"] == h]
+    # Fase 3: cada janela pesa igual, como no agregado do laboratório.
+    return {"horizonte": h, "freq": float(m["freq_dias"].mean()),
+            "taxa_base": float(m["taxa_base"].mean()),
+            "divisoes_usadas": int(m["divisoes_usadas"].max()),
+            "inicio_medido": str(m["inicio_medido"].min()), "fim_medido": str(m["fim_medido"].max())}
+
+
+def monta_tabela(situacoes, medidas, por_janela=None):
     """
     Junta a situação de hoje com o que o laboratório mediu, e ordena os papéis.
 
@@ -124,7 +192,9 @@ def monta_tabela(situacoes, medidas):
     usuário em 13/10/2026): uma coluna de limite inferior, uma de taxa-base, sem a frequência crua.
 
     Entrada: situacoes (dicionário {papel: saída de `situacao_do_papel`}), medidas (DataFrame com
-    ticker, percentil, horizonte, freq_dias, taxa_base e o período medido).
+    ticker, percentil, horizonte, freq_dias, taxa_base e o período medido), por_janela (a mesma
+    medida janela a janela; quando presente, a frequência da linha é a das janelas no extremo hoje,
+    e não a média das nove).
     Fase 1: descartar quem não está abaixo de corte nenhum.
     Fase 2: classificar na faixa e buscar as medidas daquele percentil, por horizonte.
     Fase 3: ordenar — faixa de 2,5% primeiro; depois mais médias no extremo; depois a frequência
@@ -140,7 +210,12 @@ def monta_tabela(situacoes, medidas):
         q = 0.025 if s["janelas_2_5"] > 0 else 0.05
         m = medidas[(medidas["ticker"] == ticker) & (np.isclose(medidas["percentil"], q))]
         m = m.set_index("horizonte")
-        linha = {"ticker": ticker, "faixa": q, **s}
+        # Só as janelas DA faixa da tabela: na seção de 2,5%, as que passam do corte de 2,5%; na de
+        # 5%, as que passam do de 5%. Misturar as duas confundia a leitura (usuário, 19/10/2026).
+        lista = s.get("lista_2_5" if q == 0.025 else "lista_5", [])
+        linha = {"ticker": ticker, "faixa": q,
+                 "janelas": faixa_de_janelas(lista, s.get("acompanhadas", sorted(lista))),
+                 **{k: v for k, v in s.items() if k not in ("lista_2_5", "lista_5", "acompanhadas")}}
         # O horizonte da linha: o de 45 pregões; na falta dele, o de 20. Sem nenhum dos dois, as
         # células ficam ausentes e a página mostra "—" — nunca um número inventado.
         h = next((x for x in HORIZONTES_PREFERIDOS
@@ -148,6 +223,14 @@ def monta_tabela(situacoes, medidas):
         linha["horizonte"] = h if h is not None else np.nan
         linha["freq"] = float(m.loc[h, "freq_dias"]) if h is not None else np.nan
         linha["taxa_base"] = float(m.loc[h, "taxa_base"]) if h is not None else np.nan
+        # Com o detalhe por janela, a frequência e a taxa-base passam a ser as das janelas que
+        # dispararam hoje (usuário, 19/10/2026), no mesmo horizonte preferido.
+        if por_janela is not None:
+            proprio = _medida_das_janelas(por_janela, ticker, q, lista)
+            linha["horizonte"] = proprio["horizonte"] if proprio else np.nan
+            linha["freq"] = proprio["freq"] if proprio else np.nan
+            linha["taxa_base"] = proprio["taxa_base"] if proprio else np.nan
+            h = proprio["horizonte"] if proprio else None
         # O critério de exibição (usuário, 13/10/2026): o papel só vira destaque se, no passado
         # dele, estar nesta faixa veio com retorno positivo MAIS vezes que num dia qualquer. Papel
         # sem medida não tem como cumprir o critério, e por isso também não é destaque.
@@ -156,6 +239,10 @@ def monta_tabela(situacoes, medidas):
         linha["divisoes_usadas"] = int(m["divisoes_usadas"].max()) if len(m) else 0
         linha["inicio_medido"] = str(m["inicio_medido"].min()) if len(m) else ""
         linha["fim_medido"] = str(m["fim_medido"].max()) if len(m) else ""
+        # E o período medido passa a ser o das janelas que dispararam.
+        if por_janela is not None and proprio:
+            for k in ("divisoes_usadas", "inicio_medido", "fim_medido"):
+                linha[k] = proprio[k]
         linhas.append(linha)
     if not linhas:
         return pd.DataFrame(columns=COLUNAS)
@@ -176,12 +263,8 @@ def _linha_html(r, planilhas=()):
     # O link da planilha de estudo só aparece quando o arquivo foi de fato gravado.
     dados = (link_planilha(f"extremos_{r['ticker']}.xlsx", r["ticker"])
              if r["ticker"] in planilhas else "<span class='posicao'>—</span>")
-    # A contagem na faixa do papel em destaque; a outra, apagada ao lado, quando acrescenta algo.
-    if np.isclose(r["faixa"], 0.025):
-        janelas = (f"<b>{r['janelas_2_5']}</b> de {r['janelas_medidas']}"
-                   f" <span class='posicao'>· {r['janelas_5']} abaixo de 5%</span>")
-    else:
-        janelas = f"<b>{r['janelas_5']}</b> de {r['janelas_medidas']}"
+    # As janelas em que o papel está no extremo da faixa DESTA tabela, como na tela de gatilhos.
+    janelas = r["janelas"] or "—"
     # O período medido e quantas épocas o sustentam — abaixo de três, é divisão única.
     periodo = (f"<span class='posicao'>{str(r['inicio_medido'])[:4]}–{str(r['fim_medido'])[:4]}"
                f"</span> <span class='posicao'>({r['divisoes_usadas']})</span>"
@@ -209,7 +292,7 @@ def _secao_html(titulo, nota, d, planilhas=()):
     linhas = "".join(_linha_html(r, planilhas) for _, r in d.iterrows())
     return (cabeca + "<div class='quadro'><table><thead><tr>"
             "<th class='esq'>papel</th>"
-            "<th class='esq'>médias móveis no extremo <span class='sub2'>(das acompanhadas)</span></th>"
+            "<th class='esq'>janela <span class='sub2'>(faixa de janelas)</span></th>"
             "<th class='esq'>horizonte <span class='sub2'>(pregões)</span></th>"
             "<th>frequência</th>"
             "<th>taxa-base</th>"
@@ -280,11 +363,13 @@ def main() -> None:
     raiz = Path(__file__).resolve().parent
     # Fase 1: os dois arquivos do laboratório. Sem eles não há o que comparar.
     arq_cortes, arq_medidas = raiz / config.ARQUIVO_FAIXA_CORTES, raiz / config.ARQUIVO_FAIXA_MEDIDAS
-    if not arq_cortes.exists() or not arq_medidas.exists():
+    arq_por_janela = raiz / config.ARQUIVO_FAIXA_POR_JANELA
+    if not arq_cortes.exists() or not arq_medidas.exists() or not arq_por_janela.exists():
         raise SystemExit(
             f"{arq_cortes.name} ou {arq_medidas.name} não existe. Eles são gerados no laboratório "
             "por `robusta_ml.faixa_extrema` — ver `estudo/PROVENIENCIA_FAIXA_EXTREMA.md`.")
     cortes, medidas = pd.read_csv(arq_cortes), pd.read_csv(arq_medidas)
+    por_janela = pd.read_csv(arq_por_janela)
     # Um papel pode vir pela linha de comando, para conferência rápida.
     if len(sys.argv) > 1:
         cortes = cortes[cortes["ticker"] == sys.argv[1]]
@@ -320,7 +405,7 @@ def main() -> None:
     barra.close()
 
     # Fase 3: a tabela, a página e os estáticos.
-    tabela = monta_tabela(situacoes, medidas)
+    tabela = monta_tabela(situacoes, medidas, por_janela)
     destaques = int(tabela["acima_da_base"].astype(bool).sum()) if len(tabela) else 0
     print(f"\n  {len(tabela)} papéis na faixa extrema, {destaques} com frequência acima da taxa-base")
     if falhas:

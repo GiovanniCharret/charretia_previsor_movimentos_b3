@@ -56,7 +56,10 @@ class TestSituacao:
     def test_conta_as_medias_abaixo_de_cada_corte(self):
         s = situacao_do_papel({5: -2.5, 20: -1.7, 90: -0.3}, _cortes())
         # Só a média de 5 passa do corte de 2,5%; a de 5 e a de 20 passam do de 5%.
-        assert s == {"janelas_2_5": 1, "janelas_5": 2, "janelas_medidas": 3}
+        assert (s["janelas_2_5"], s["janelas_5"], s["janelas_medidas"]) == (1, 2, 3)
+        # E a tabela precisa saber QUAIS, não só quantas.
+        assert s["lista_2_5"] == [5] and s["lista_5"] == [5, 20]
+        assert s["acompanhadas"] == [5, 20, 90]
 
     def test_media_sem_escore_nao_conta_nem_a_favor_nem_contra(self):
         # Ausência de medida não é ausência de afastamento: a média sai do denominador.
@@ -64,7 +67,37 @@ class TestSituacao:
         assert s["janelas_medidas"] == 2 and s["janelas_2_5"] == 1
 
 
+class TestFaixaDeJanelas:
+    NOVE = [5, 10, 20, 30, 45, 60, 90, 130, 200]
+
+    def test_uma_janela_so_aparece_como_numero(self):
+        from gerar_extremos import faixa_de_janelas
+        assert faixa_de_janelas([45], self.NOVE) == "45"
+
+    def test_vizinhas_na_lista_acompanhada_viram_uma_faixa_com_a_contagem(self):
+        # O formato da tela de gatilhos: "3–9 (7)". Aqui as vizinhas são as da lista de nove.
+        from gerar_extremos import faixa_de_janelas
+        assert faixa_de_janelas([10, 20, 30], self.NOVE) == "10–30 (3)"
+        assert faixa_de_janelas([10, 20, 30, 90], self.NOVE) == "10–30 (3) · 90"
+        assert faixa_de_janelas([], self.NOVE) == ""
+
+    def test_janela_sem_historia_nao_quebra_a_vizinhanca(self):
+        # Papel novo sem as médias de 130 e 200: 60 e 90 continuam vizinhas, e 90 é a última.
+        from gerar_extremos import faixa_de_janelas
+        assert faixa_de_janelas([60, 90], [5, 10, 20, 30, 45, 60, 90]) == "60–90 (2)"
+
+
 class TestTabela:
+    def test_a_secao_de_2_5_mostra_so_as_janelas_de_2_5(self):
+        # A confusão relatada em 19/10/2026: na tabela de 2,5% aparecia "1 de 9 · 2 abaixo de 5%".
+        # A linha passa a mostrar só as janelas que passaram do corte DAQUELA tabela.
+        s = situacao_do_papel({5: -2.5, 20: -1.7, 90: -0.3}, _cortes())
+        t = monta_tabela({"WEGE3": s}, pd.DataFrame(_medidas("WEGE3", 0.025))).iloc[0]
+        assert t["faixa"] == 0.025 and t["janelas"] == "5"
+        html = monta_pagina(TEMPLATE, monta_tabela({"WEGE3": s}, pd.DataFrame(_medidas("WEGE3", 0.025))),
+                            "2026-10-16", 98)
+        assert "abaixo de 5%</span>" not in html and " de 9" not in html
+
     def test_classifica_na_faixa_mais_funda_e_deixa_de_fora_quem_nao_esta(self):
         sit = {"FUNDO3": _sit(2, 4), "RASO3": _sit(0, 1), "FORA3": _sit(0, 0)}
         med = pd.DataFrame(_medidas("FUNDO3", 0.025) + _medidas("FUNDO3", 0.05)
@@ -108,6 +141,36 @@ class TestTabela:
     def test_dia_sem_ninguem_devolve_a_tabela_vazia_com_as_colunas(self):
         t = monta_tabela({"FORA3": _sit(0, 0)}, pd.DataFrame(_medidas("FORA3", 0.05)))
         assert t.empty and list(t.columns) == COLUNAS
+
+
+class TestFrequenciaDasJanelasNoExtremo:
+    def _detalhe(self):
+        # Duas janelas com frequências bem diferentes, para a média das nove não esconder nada.
+        comum = {"ticker": "BOM3", "percentil": 0.025, "dias": 30, "episodios": 4,
+                 "divisoes_usadas": 4, "inicio_medido": "2010-01-04", "fim_medido": "2026-09-11"}
+        return pd.DataFrame([{**comum, "horizonte": 45, "janela": 10, "freq_dias": 0.80, "taxa_base": 0.55},
+                             {**comum, "horizonte": 45, "janela": 90, "freq_dias": 0.40, "taxa_base": 0.57},
+                             {**comum, "horizonte": 20, "janela": 30, "freq_dias": 0.70, "taxa_base": 0.52}])
+
+    def test_a_frequencia_e_a_das_janelas_que_dispararam(self):
+        # Pedido do usuário em 19/10/2026: a frequência da linha é a das janelas no extremo hoje.
+        sit = {"BOM3": {**_sit(1, 1), "lista_2_5": [10], "lista_5": [10], "acompanhadas": [10, 30, 90]}}
+        t = monta_tabela(sit, pd.DataFrame(_medidas("BOM3", 0.025)), self._detalhe()).iloc[0]
+        assert t["freq"] == pytest.approx(0.80) and t["taxa_base"] == pytest.approx(0.55)
+        assert t["janelas"] == "10"
+
+    def test_varias_janelas_pesam_igual(self):
+        sit = {"BOM3": {**_sit(2, 2), "lista_2_5": [10, 90], "lista_5": [10, 90],
+                        "acompanhadas": [10, 30, 90]}}
+        t = monta_tabela(sit, pd.DataFrame(_medidas("BOM3", 0.025)), self._detalhe()).iloc[0]
+        assert t["freq"] == pytest.approx(0.60) and t["taxa_base"] == pytest.approx(0.56)
+        # 0,60 contra 0,56: é destaque.
+        assert bool(t["acima_da_base"]) is True
+
+    def test_janela_que_so_tem_medida_em_20_usa_o_horizonte_de_20(self):
+        sit = {"BOM3": {**_sit(1, 1), "lista_2_5": [30], "lista_5": [30], "acompanhadas": [10, 30, 90]}}
+        t = monta_tabela(sit, pd.DataFrame(_medidas("BOM3", 0.025)), self._detalhe()).iloc[0]
+        assert t["horizonte"] == 20 and t["freq"] == pytest.approx(0.70)
 
 
 class TestPagina:
@@ -168,7 +231,7 @@ class TestPagina:
         # "Janelas abaixo do corte" não se lia sozinho; o cabeçalho e o glossário dizem agora que
         # são médias móveis e quantas são.
         html = monta_pagina(TEMPLATE, self._tabela(), "2026-10-09", 98)
-        assert "médias móveis no extremo" in html
+        assert "janela <span class='sub2'>(faixa de janelas)</span>" in html
         assert "5, 10, 20, 30, 45" in html
 
     def test_a_barra_marca_a_propria_pagina(self):

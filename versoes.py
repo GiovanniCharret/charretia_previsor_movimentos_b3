@@ -100,7 +100,20 @@ VERSOES = [
             "<b>Os mesmos decis não indicam saída.</b> No decil mais alto, nenhuma medida se separa "
             "do placebo; nos prazos curtos o papel tende a continuar, não a devolver.",
         ],
-        "notas": [],
+        "notas": [
+            ("13/10/2026", "A lista de papéis passou a ter <b>100</b> (planilha do laboratório). A "
+                           "tabela ganhou o desenho da v2: uma coluna de frequência e uma de "
+                           "taxa-base, no horizonte de 45 pregões (20 na falta dele). O limite "
+                           "inferior saiu da tela — com cerca de dez episódios por papel ele ficava "
+                           "em 20% a 30% e foi lido como placebo. <b>Só aparece o papel cuja "
+                           "frequência supera a própria taxa-base</b>. Ganhou também a planilha de "
+                           "estudo de cada papel, com o treino e o teste de cada divisão."),
+            ("19/10/2026", "A coluna das médias passou a mostrar <b>em quais janelas</b> o papel "
+                           "está no extremo, como na v2 (\"10–30 (3)\"), e só no corte da seção em "
+                           "que ele aparece. A frequência e a taxa-base da linha passaram a ser "
+                           "<b>as dessas janelas</b>, e não a média das nove — mais coerente com o "
+                           "que a linha mostra, ao custo de cada número vir de menos episódios."),
+        ],
         "receita": None,
     },
     {

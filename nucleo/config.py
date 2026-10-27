@@ -105,6 +105,10 @@ ARQUIVO_FAIXA_CORTES = "estudo/faixa_extrema_cortes.csv"
 # Por (papel, percentil, horizonte): frequência por dia, limite inferior, taxa-base e período medido.
 ARQUIVO_FAIXA_MEDIDAS = "estudo/faixa_extrema_medidas.csv"
 
+# A mesma medida janela a janela. É dela que sai a frequência da linha: a média das janelas em que o
+# papel está no extremo hoje (pedido do usuário em 19/10/2026).
+ARQUIVO_FAIXA_POR_JANELA = "estudo/faixa_extrema_por_janela.csv"
+
 # ============================================================================
 # Comum às duas versões
 # ============================================================================

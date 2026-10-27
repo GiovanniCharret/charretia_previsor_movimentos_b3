@@ -5,9 +5,9 @@
 `faixa_extrema_cortes.csv` e `faixa_extrema_medidas.csv` são produzidos por
 `robusta_ml.faixa_extrema`, no repositório do laboratório (`rebuild_robusta_backtests`).
 
-| exportado em | 12/10/2026 às 22:00 |
+| exportado em | 19/10/2026 às 21:36 |
 |---|---|
-| commit do laboratório | `a5be6d8` |
+| commit do laboratório | `db50c2d` |
 | árvore de trabalho | **com alterações não commitadas** |
 | papéis | 98 |
 | cortes medidos | 1764 |
@@ -22,7 +22,9 @@
 - `freq_dias`: fração dos DIAS acionados com retorno seguinte positivo, na validação
   encadeada, média entre as janelas. Conta dias, não episódios;
 - `lim_inf`: limite inferior exato de 95% dessa fração, usando o número de episódios como
-  tamanho de amostra, porque dias seguidos não são independentes.
+  tamanho de amostra, porque dias seguidos não são independentes;
+- `faixa_extrema_por_janela.csv`: a mesma medida janela a janela. A tela exibe a média das
+  janelas em que o papel está no extremo HOJE — cada uma vem de poucos episódios.
 
 ## O que isto vale
 

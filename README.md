@@ -26,7 +26,7 @@ mede nada novo, apenas se aplica o que já foi medido e validado fora da amostra
 |---|---|
 | `gerar_tela.py` | gerador da **triagem**: baixa, peneira, calcula o estado de hoje, grava a página e as planilhas |
 | `gerar_alertas.py` | gerador dos **gatilhos**: cruza os setups aprovados com o fechamento de hoje |
-| `gerar_extremos.py` | gerador da **faixa extrema**: conta em quantas de nove janelas o papel está abaixo dos percentis de 2,5% e 5% |
+| `gerar_extremos.py` | gerador da **faixa extrema**: mostra em quais das nove médias o papel está abaixo do percentil de 2,5% ou de 5%, com a frequência dessas médias |
 | `gerar_metodo.py` | gerador do **método**: não toca a rede, monta a página a partir de `versoes.py` |
 | `publicacao.py` | o que as três páginas dividem: a barra de abas, a cópia dos estilos e o estado do dia |
 | `versoes.py` | o **registro histórico** das versões: pergunta, parâmetros, passo a passo e receita de retorno |
@@ -34,7 +34,7 @@ mede nada novo, apenas se aplica o que já foi medido e validado fora da amostra
 | `estilo.css`, `estilo_componentes.css` | o sistema visual e os componentes, ambos linkados pelas três páginas |
 | `lista_tickers_liquidos.xlsx` | os 100 papéis líquidos rastreados pela triagem (coluna `ticker`); é cópia da lista do laboratório |
 | `estudo/setups.csv` | os setups aprovados, **exportados pelo laboratório** (ver *Proveniência do estudo*) |
-| `estudo/faixa_extrema_cortes.csv`, `estudo/faixa_extrema_medidas.csv` | os limiares e as frequências da faixa extrema, **exportados pelo laboratório** por `robusta_ml.faixa_extrema` (ver `estudo/PROVENIENCIA_FAIXA_EXTREMA.md`) |
+| `estudo/faixa_extrema_cortes.csv`, `estudo/faixa_extrema_medidas.csv`, `estudo/faixa_extrema_por_janela.csv` | os limiares, as frequências agregadas e as frequências janela a janela da faixa extrema, **exportados pelo laboratório** por `robusta_ml.faixa_extrema` (ver `estudo/PROVENIENCIA_FAIXA_EXTREMA.md`) |
 | `nucleo/` | cópia do que as telas usam do laboratório (ver *Proveniência do núcleo*) |
 | `saida/*.html` | as três páginas geradas |
 | `planilha_estudo.py` | monta a planilha de estudo das telas de gatilhos e da faixa extrema: a série linha a linha, com o treino e o teste de cada divisão |
@@ -123,6 +123,22 @@ zero. Contra o placebo conjunto, só um de seis testes passa de 5% — por isso 
 
 A página da v2 não foi retirada porque conta o caminho da pesquisa; ela abre com o aviso do que os
 números dela valem.
+
+### Como a tabela da faixa extrema se lê
+
+| coluna | o que mostra |
+|---|---|
+| papel | o código; só aparece se a frequência dele supera a própria taxa-base |
+| janela (faixa de janelas) | em quais das nove médias acompanhadas (5, 10, 20, 30, 45, 60, 90, 130 e 200) o fechamento de hoje passou do corte **da tabela em que o papel está** — `45`, ou `10–30 (3)` para as médias de 10, 20 e 30 |
+| horizonte | 45 pregões; 20 quando essas médias não têm medida em 45 |
+| frequência | de cada 100 dias em que o papel esteve na faixa, **nessas médias**, em quantos o retorno seguinte foi positivo |
+| taxa-base | o mesmo num dia qualquer do papel, nessas médias e nesse horizonte |
+| período medido (épocas) | os anos e as divisões que sustentam a frequência |
+| dados | a planilha de estudo do papel |
+
+Papéis na faixa cuja frequência não supera a taxa-base ficam fora da tela; a página diz quantos
+foram. A frequência de uma linha vem de poucos episódios — às vezes de uma média só —, então ela
+serve para escolher o que olhar, não como garantia.
 
 ## Registro de versões — `versoes.py`
 
@@ -251,6 +267,8 @@ Nas páginas abertas, confira:
 - **a tabela de gatilhos é uma só, com cada papel uma única vez**, e a coluna de horizontes traz o
   principal em negrito (`45 · 20-10-5-3`). O limite inferior da linha tem de bater com o do
   horizonte principal em `saida/ranking_do_dia.csv`;
+- **na faixa extrema, a seção de 2,5% só mostra médias que passaram do corte de 2,5%**, e a
+  frequência de cada linha bate com `freq` em `saida/faixa_extrema_do_dia.csv`;
 - **quem está acima tem o horizonte principal maior**; empate desfaz pelo limite inferior;
 - **`alertas.html`, `extremos.html` e `metodo.html` abrem** pelas abas, sem 404;
 - **a faixa extrema mostra as duas seções sempre**, mesmo vazias ("nenhum papel hoje"), e o

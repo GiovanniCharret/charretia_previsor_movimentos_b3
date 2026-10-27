@@ -10,7 +10,7 @@ O repositório é escrito em português (código, docstrings, comentários, comm
 python -m venv .venv; .venv\Scripts\activate
 pip install -r requirements.txt pytest
 
-python -m pytest -q                        # os 115 testes (offline, preços sintéticos, segundos)
+python -m pytest -q                        # os 122 testes (offline, preços sintéticos, segundos)
 python -m pytest tests/test_gerar_tela.py::TestClassificaEvidencia -q     # uma classe
 python -m pytest -q -k "regua"                                            # um teste por nome
 
@@ -112,17 +112,23 @@ Nasceu do achado W do laboratório (12/10/2026): a proteção por episódio da v
 **efeito mecânico da contagem** (preços sem memória já devolvem 75% a 80%). O que restou é um
 indício medido **por dia** nos percentis de 2,5% e 5%. Regras que não devem ser "melhoradas":
 
-- **A medida é frequência por dia, nunca por episódio.** O episódio entra só como tamanho de amostra
-  do limite inferior, porque dias seguidos não são independentes.
-- **Não há janela vencedora.** São nove janelas fixadas antes do teste; a tela conta em quantas o
-  papel está abaixo do corte. Destacar uma janela seria escolher depois de ver o resultado.
-- **O limite inferior por papel fica abaixo da taxa-base em quase todas as linhas, e isso é o
-  correto**: um papel tem menos de dez episódios extremos em vinte anos. O efeito só aparece
-  juntando os papéis, e mesmo assim como indício. Não troque a medida para "melhorar" a tabela.
+- **A medida é frequência por dia, nunca por episódio.** O episódio entra só como contagem de
+  observações independentes, porque dias seguidos não são independentes.
+- **As nove janelas são fixas** (5 a 200) e foram fixadas antes do teste conjunto. A tela mostra
+  **em quais** delas o papel está no extremo hoje (`faixa_de_janelas`, formato "10–30 (3)", com
+  vizinhança na lista de nove), e **só no corte da seção** em que ele aparece — misturar os cortes de
+  2,5% e 5% numa linha confundiu a leitura (19/10/2026).
+- **A frequência e a taxa-base da linha são as dessas janelas** (`_medida_das_janelas`, média
+  simples entre elas, a partir de `estudo/faixa_extrema_por_janela.csv`), no horizonte de 45 pregões
+  ou, na falta dele, de 20. Cada linha vem de poucos episódios; não há limite inferior na tela, porque
+  ele ficava em 20% a 30% e foi lido como placebo.
+- **Só é destaque quem tem frequência acima da própria taxa-base** (`acima_da_base`). Os demais
+  ficam em `saida/faixa_extrema_do_dia.csv`, e a página diz quantos ficaram de fora.
 - **O quadro "Um indício, não um achado" faz parte da página** e tem teste. Também tem teste o aviso
   no topo de `alertas.html`, que explica que a medida da v2 não passou no controle.
-- Os cortes e as medidas vêm de `estudo/faixa_extrema_cortes.csv` e `faixa_extrema_medidas.csv`,
-  exportados por `robusta_ml.faixa_extrema`. A tela não recalcula corte nem frequência.
+- Os cortes e as medidas vêm de `estudo/faixa_extrema_cortes.csv`, `faixa_extrema_medidas.csv` e
+  `faixa_extrema_por_janela.csv`, exportados por `robusta_ml.faixa_extrema`. A tela não recalcula
+  corte nem frequência, e **falha de propósito** se um dos três faltar.
 
 ### As planilhas de estudo das telas v2 e v3
 
