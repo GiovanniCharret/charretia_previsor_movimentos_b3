@@ -1,22 +1,22 @@
 """
-O que as três páginas do site compartilham: a barra de navegação e os arquivos estáticos.
+O que as páginas do site compartilham: a barra de navegação, os arquivos estáticos e o estado do dia.
 
-Por que este módulo existe: o site passou a ter três páginas (`index.html`, `alertas.html`,
-`metodo.html`), geradas por três scripts independentes. Duas coisas precisam ser **idênticas** nas
-três, e nenhuma delas pertence a um gerador específico:
+Por que este módulo existe: o site tem páginas geradas por scripts independentes (`index.html`,
+`extremos.html` e `metodo.html`). Duas coisas precisam ser **idênticas** em todas, e nenhuma delas
+pertence a um gerador específico:
 
 1. **A barra de abas.** Se cada gerador montasse a sua, a primeira mudança de rótulo apareceria em
-   uma página e não nas outras — o visitante veria dois sites diferentes conforme a página em que
-   entrasse. É exatamente o modo de deriva que a extração do estilo para `estilo.css` acabou de
-   resolver no CSS, aplicado agora ao HTML.
+   uma página e não nas outras.
 2. **A cópia dos arquivos estáticos** para a pasta publicada. As páginas linkam `estilo.css` por
-   caminho relativo, e o `index.html` é gravado dentro de `saida/` — sem a cópia, a página sobe sem
-   formatação nenhuma.
+   caminho relativo, e sem a cópia sobem sem formatação nenhuma.
 
-O contador de gatilhos na aba cria uma dependência entre páginas: a triagem precisa saber quantos
-papéis dispararam hoje, e só o gerador de alertas sabe disso. A ligação é um arquivo de estado
-minúsculo, escrito por `gerar_alertas.py` e lido pelos outros dois. **Ausência dele não é erro** —
-a barra simplesmente sai sem contador, que é o comportamento correto quando ainda não se mediu.
+O contador de destaques na aba "Faixa extrema" cria uma dependência entre páginas: a triagem precisa
+saber quantos papéis estão em destaque hoje, e só o gerador da faixa extrema sabe disso. A ligação é
+um arquivo de estado minúsculo, escrito por `gerar_extremos.py` e lido pelos outros dois. **Ausência
+dele não é erro** — a barra sai sem contador, que é o correto quando ainda não se mediu.
+
+Até 04/11/2026 o contador era o da tela de gatilhos (v2), descontinuada nessa data; a função e o
+arquivo de estado são os mesmos, só mudou quem escreve.
 """
 
 import json                                                 # o arquivo de estado entre páginas
@@ -28,8 +28,8 @@ from pathlib import Path                                    # caminhos
 # distinguem uma página da outra para quem chega de fora.
 PAGINAS = [
     ("triagem", "index.html", "Triagem", "onde cada papel está na escala, hoje"),
-    ("gatilhos", "alertas.html", "Gatilhos", "quem entrou numa faixa que o estudo aprovou"),
     ("extremos", "extremos.html", "Faixa extrema", "quem está entre os dias mais afastados da média"),
+    ("setores", "setores.html", "Bancos e elétricas", "o decil 0 em dois setores, em observação"),
     ("metodo", "metodo.html", "Método", "como cada versão funciona, passo a passo"),
 ]
 
@@ -66,9 +66,9 @@ def barra_de_abas(atual, n_papeis_alerta=None):
         # A página atual não é link para si mesma: `aria-current` é o que anuncia isso a leitores
         # de tela, e o estilo se pendura nele em vez de numa classe separada.
         marca = ' aria-current="page"' if chave == atual else ""
-        # Fase 2: o contador, só na aba de gatilhos e só quando há gatilho.
+        # Fase 2: o contador, só na aba da faixa extrema e só quando há destaque.
         selo = ""
-        if chave == "gatilhos" and n_papeis_alerta:
+        if chave == "extremos" and n_papeis_alerta:
             plural = "papéis" if n_papeis_alerta > 1 else "papel"
             selo = f' <span class="selo">{n_papeis_alerta} {plural}</span>'
         partes.append(

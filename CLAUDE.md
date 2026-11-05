@@ -10,18 +10,16 @@ O repositório é escrito em português (código, docstrings, comentários, comm
 python -m venv .venv; .venv\Scripts\activate
 pip install -r requirements.txt pytest
 
-python -m pytest -q                        # os 122 testes (offline, preços sintéticos, segundos)
+python -m pytest -q                        # os 104 testes (offline, preços sintéticos, segundos)
 python -m pytest tests/test_gerar_tela.py::TestClassificaEvidencia -q     # uma classe
 python -m pytest -q -k "regua"                                            # um teste por nome
 
-# As três páginas, NESTA ORDEM (gerar_alertas grava o estado que as outras duas leem):
-python gerar_alertas.py                    # tela de gatilhos, 61 downloads
-python gerar_extremos.py                   # tela da faixa extrema (v3), 61 downloads
-python gerar_tela.py                       # tela de triagem, ~70 downloads
+# As três páginas, NESTA ORDEM (gerar_extremos grava o estado que as outras duas leem):
+python gerar_extremos.py                   # tela da faixa extrema (v3), 100 downloads
+python gerar_setores.py                    # bancos e elétricas (v4), 18 downloads
+python gerar_tela.py                       # tela de triagem, 100 downloads
 python gerar_metodo.py                     # página de método, sem rede
 start saida\index.html
-
-python gerar_alertas.py PRIO3              # um papel só, para conferência rápida
 ```
 
 São exatamente os comandos que o GitHub Actions roda, na mesma ordem. Os testes nunca tocam a rede;
@@ -34,8 +32,8 @@ só os dois primeiros geradores baixam.
 | gerador | página | fonte dos dados |
 |---|---|---|
 | `gerar_tela.py` | `index.html` — triagem | `lista_tickers_liquidos.xlsx` + downloads |
-| `gerar_alertas.py` | `alertas.html` — gatilhos | `estudo/setups.csv` + downloads |
 | `gerar_extremos.py` | `extremos.html` — faixa extrema (v3, a vigente) | `estudo/faixa_extrema_*.csv` + downloads |
+| `gerar_setores.py` | `setores.html` — bancos e elétricas (v4, em observação) | `estudo/setores_*.csv` + downloads |
 | `gerar_metodo.py` | `metodo.html` — método | `versoes.py`, **sem rede** |
 
 `publicacao.py` carrega o que os três dividem: a barra de abas (`barra_de_abas`), a cópia dos
@@ -43,14 +41,13 @@ estilos para a pasta publicada (`copia_estatica`) e o estado do dia (`grava_esta
 
 Duas regras que não são óbvias e o código sustenta:
 
-- **A ordem de execução importa.** `gerar_alertas.py` grava `saida/estado.json` com quantos papéis
-  dispararam hoje, e as outras duas leem esse arquivo para o contador da barra de abas. Ausência
-  dele **não é erro**: a barra sai sem contador, que é o correto quando ainda não se mediu —
-  inventar um zero afirmaria que não houve gatilho, o que é diferente de não saber.
-- **A tela de gatilhos não recalcula o corte do decil.** Ele vem medido no laboratório, em
-  `estudo/setups.csv`. Com a história curta que a aplicação baixa, o corte da GGBR4 com janela 200
-  ia de −2,010 para +0,465 — trocava de sinal, e um corte positivo faria o "decil mais afastado
-  para baixo" incluir dias com o preço acima da média.
+- **A ordem de execução importa.** `gerar_extremos.py` grava `saida/estado.json` com quantos papéis
+  estão em destaque hoje, e as outras duas leem esse arquivo para o contador da aba "Faixa extrema".
+  Ausência dele **não é erro**: a barra sai sem contador, que é o correto quando ainda não se mediu
+  — inventar um zero afirmaria que não houve destaque, o que é diferente de não saber.
+- **A faixa extrema não recalcula corte.** Ele vem medido no laboratório, em `estudo/`. Com a
+  história curta que a aplicação baixa, o corte da GGBR4 com janela 200 ia de −2,010 para +0,465 —
+  trocava de sinal (achado da antiga v2, que vale para qualquer corte de cauda).
 
 ### A triagem (v1)
 
@@ -76,39 +73,21 @@ Três invariantes que o código sustenta de propósito:
 `ZONA = (0, 1, 2)` (decis de viés observado) e `FORCA_EVIDENCIA` vivem no topo de `gerar_tela.py`;
 os parâmetros do estudo vivem em `nucleo/config.py`, em dois blocos — um por versão da tela.
 
-### Os gatilhos (v2)
+### Os gatilhos (v2) — descontinuada em 04/11/2026
 
-Dois laços (`gerar_alertas.py`). O primeiro, por papel: baixa **só o necessário para o escore de
-hoje** (`janela + 252 - 1 + folga` pregões, calculado a partir da maior janela aprovada daquele
-papel) e compara o escore de hoje com o corte que veio do laboratório. O segundo, por setup: cruza
-com `estudo/setups.csv` e agrupa **janelas vizinhas numa faixa só** — médias vizinhas compartilham
-cerca de 99% dos dados, então listá-las separadas sugeriria dezenas de gatilhos onde há um.
+A tela de gatilhos (`alertas.html`, `gerar_alertas.py`, `estudo/setups.csv`) saiu do site depois de
+duas semanas de uso da v3, que a substituiu com mais critério (decisão do usuário). Fica **só o
+registro** em `versoes.py`, com a receita de retorno: o código está no commit `84bfcb5`. Não
+recrie a página nem um link para `alertas.html` — há testes que falham se algum template ou a barra
+de abas apontar para ela. As duas contas de download que só ela tinha (`pregoes_necessarios`,
+`periodo_do_download`) foram para `gerar_extremos.py`.
 
-A linha "menos pior" dos papéis sem nenhum setup aprovado (`passa_barra` falso) é descartada: ela
-pode disparar o decil, mas não é gatilho, e exibi-la ao lado dos aprovados apresentaria como sinal o
-que a planilha marca como ausência de sinal.
-
-**A página exibe uma tabela só, com um papel por linha** (desde 12/10/2026, pedido do usuário depois
-de um mês de uso real). `monta_alertas` continua devolvendo o detalhe por papel, horizonte e faixa —
-é o que vai para `saida/alertas.csv` — e `ranqueia_papeis` o reduz ao que a tela mostra, gravado
-também em `saida/ranking_do_dia.csv`. Três regras que não devem ser "simplificadas":
-
-- **A ordem é a soma dos dias dos horizontes** em que o papel dispara, depois o limite inferior do
-  maior horizonte, depois a colocação do papel. Como cada horizonte (3, 5, 10, 20, 45) é maior que a
-  soma de todos os menores, somar os dias equivale a ordenar pelo maior prazo presente. Um teste
-  verifica isso em todos os pares de subconjuntos: acrescentar um horizonte que quebre a
-  propriedade faz o teste falhar.
-- **Os números da linha vêm do maior horizonte do papel**, não do melhor. É o prazo em que o usuário
-  monta posição (ele opera olhando 45 e 20 pregões; os curtos entram como reforço).
-- **Não há coluna de proteção crua**, só o limite inferior — exibir as duas convidava a ler a mais
-  otimista.
-
-Mudanças de apresentação como essa entram no campo `notas` da versão vigente em `versoes.py`, não
-como versão nova. A próxima versão nasce quando o **modelo** mudar.
+Mudanças de apresentação entram no campo `notas` da versão vigente em `versoes.py`, não como versão
+nova. A próxima versão nasce quando o **modelo** mudar.
 
 ### A faixa extrema (v3) — a versão vigente
 
-Nasceu do achado W do laboratório (12/10/2026): a proteção por episódio da v2 é em grande parte
+Nasceu do achado W do laboratório (12/10/2026): a proteção por episódio da v2 era em grande parte
 **efeito mecânico da contagem** (preços sem memória já devolvem 75% a 80%). O que restou é um
 indício medido **por dia** nos percentis de 2,5% e 5%. Regras que não devem ser "melhoradas":
 
@@ -124,16 +103,31 @@ indício medido **por dia** nos percentis de 2,5% e 5%. Regras que não devem se
   ele ficava em 20% a 30% e foi lido como placebo.
 - **Só é destaque quem tem frequência acima da própria taxa-base** (`acima_da_base`). Os demais
   ficam em `saida/faixa_extrema_do_dia.csv`, e a página diz quantos ficaram de fora.
-- **O quadro "Um indício, não um achado" faz parte da página** e tem teste. Também tem teste o aviso
-  no topo de `alertas.html`, que explica que a medida da v2 não passou no controle.
+- **O quadro "Um indício, não um achado" faz parte da página** e tem teste.
 - Os cortes e as medidas vêm de `estudo/faixa_extrema_cortes.csv`, `faixa_extrema_medidas.csv` e
   `faixa_extrema_por_janela.csv`, exportados por `robusta_ml.faixa_extrema`. A tela não recalcula
   corte nem frequência, e **falha de propósito** se um dos três faltar.
 
-### As planilhas de estudo das telas v2 e v3
+### Bancos e elétricas (v4) — em observação
 
-`planilha_estudo.py` grava `saida/dados/gatilhos_{TICKER}.xlsx` e `extremos_{TICKER}.xlsx` para os
-papéis exibidos, com link na última coluna das duas tabelas (pedido do usuário, que é estudante e
+Nasceu do teste por setor do laboratório (04/11/2026): o decil 0, em 45 pregões, teve os menores
+valores-p nas elétricas e nos bancos, sem sobreviver à correção pelos 66 testes. É **hipótese em
+observação**, e a v3 continua sendo a versão em produção (`versoes.py` tem exatamente uma, e há
+teste disso). Regras:
+
+- **A lista de 18 papéis é travada no laboratório** (`SETORES_V4` em `robusta_ml/config.py`) e chega
+  aqui dentro de `estudo/setores_cortes.csv`, com a coluna `setor`. Não acrescente papel aqui.
+- **A linha é a da v3**, com a frequência e a taxa-base do próprio papel nas janelas em que ele está
+  no decil 0 hoje (pedido do usuário). `gerar_setores.py` importa de `gerar_extremos.py` o
+  download, o escore, `faixa_de_janelas`, `_medida_das_janelas` e `_secao_html`. Esta última e
+  `_linha_html` ganharam o parâmetro `prefixo` da planilha (`setores_{TICKER}.xlsx`).
+- **Uma seção por setor**, na ordem de `config.SETORES_ROTULOS`, sempre visíveis, mesmo vazias.
+- **O contador da barra continua sendo o da faixa extrema**; a v4 só o lê.
+
+### As planilhas de estudo da faixa extrema
+
+`planilha_estudo.py` grava `saida/dados/extremos_{TICKER}.xlsx` para os papéis em destaque, com
+link na última coluna da tabela (pedido do usuário, que é estudante e
 quer ver o arranjo de treino e teste). `monta_estudo` é pura: devolve a série linha a linha de uma
 janela — com `divisao`, `conjunto`, `treino_ate`, `corte_usado`, `na_faixa`, `episodio` — e o
 resumo por divisão. Pontos que não são óbvios:
@@ -145,7 +139,7 @@ resumo por divisão. Pontos que não são óbvios:
 - **O link só aparece para a planilha que foi gravada** (`planilhas`, passado a `monta_pagina`).
   Falha no download deixa o papel com "—", e a página sai.
 - O resumo traz **as duas contas lado a lado** — frequência por dia e episódios positivos —, que é o
-  jeito mais direto de ver por que a v2 e a v3 dão números diferentes.
+  jeito mais direto de ver por que a v2 (descontinuada) e a v3 dão números diferentes.
 
 ### O método
 
@@ -183,7 +177,7 @@ todo template**, e as classes que `barra_de_abas` emite precisam ter regra em al
 O artefato publicado é a pasta `saida/` **inteira**: as três páginas, os dois estilos, o
 `estado.json` e as planilhas em `dados/`, para onde os botões de download apontam por caminho
 relativo. `saida/` não é versionada; é regerada a cada execução. **`estudo/` é o oposto**: vem do
-laboratório, é versionada, e sem ela `gerar_alertas.py` não roda.
+laboratório, é versionada, e sem ela `gerar_extremos.py` não roda.
 `.github/workflows/publicar.yml` roda em push na `main`, às 21:30 UTC em dias úteis e por clique
 manual — `schedule`/`workflow_dispatch` só valem na branch padrão, por isso o gatilho de `push`
 existe. `configure-pages` usa `enablement: true` para habilitar o Pages na primeira execução.
@@ -201,14 +195,15 @@ Uma correção feita direto em `nucleo/` se perde na próxima recópia e as duas
 sempre. Corrija no laboratório, recopie, e **atualize o commit de origem registrado no README** —
 a resincronização é manual e nada avisa quando ela atrasa.
 
-**`estudo/setups.csv` tem a mesma natureza**, e o mesmo risco: é gerado lá por
-`robusta_ml.exporta_setups` e versionado aqui. `estudo/PROVENIENCIA.md` registra a data, o commit de
-origem e se havia alterações não commitadas na ocasião. Nunca edite o arquivo à mão — reexporte.
+**Os arquivos de `estudo/` têm a mesma natureza**, e o mesmo risco: são gerados lá por
+`robusta_ml.faixa_extrema` e versionados aqui. `estudo/PROVENIENCIA_FAIXA_EXTREMA.md` registra a
+data, o commit de origem e se havia alterações não commitadas na ocasião. Nunca edite à mão —
+reexporte.
 
 ## Os testes que não pertencem a nenhum gerador
 
 `tests/test_site.py` cobre propriedades que **nenhum gerador sozinho garante**: as três páginas se
-alcançam, exibem o mesmo contador, não deixam marcador de template escapar, e todo estilo declarado
+alcançam, nenhuma aponta para a tela descontinuada, exibem o mesmo contador, não deixam marcador de template escapar, e todo estilo declarado
 está linkado em todo template.
 
 Essa última nasceu de um defeito real (07/09/2026): o teste original verificava só que *todo estilo

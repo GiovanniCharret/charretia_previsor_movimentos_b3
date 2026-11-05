@@ -129,3 +129,11 @@ thead th .sub2 { text-transform:none; letter-spacing:0; font-weight:400; opacity
                        font-weight:700; }
 .nota-versao p { font-family:var(--serif); font-size:14.5px; color:var(--ink-2); margin:0; }
 .nota-versao p b { font-family:var(--display); font-size:13px; font-weight:600; color:var(--ink); }
+
+/* Versão retirada do site: fica no registro, em tom de alerta apagado, para não ser lida como vigente. */
+.e-descontinuada { color:var(--alerta); background:var(--alerta-fundo);
+                   border:1px solid color-mix(in srgb, var(--alerta) 32%, transparent); }
+
+/* Versão no ar como hipótese em acompanhamento: tom de cautela, distinto do vigente e do retirado. */
+.e-observacao { color:var(--fraca); background:var(--fraca-fundo);
+                border:1px dashed color-mix(in srgb, var(--fraca) 45%, transparent); }

@@ -1,7 +1,7 @@
 # Gera as quatro páginas do site e publica no GitHub Pages.
 #
-# ORDEM IMPORTA. `gerar_alertas.py` roda primeiro porque deixa em `saida/estado.json` quantos papéis
-# dispararam hoje, e é dele que as outras duas tiram o contador da barra de abas. Invertida a ordem,
+# ORDEM IMPORTA. `gerar_extremos.py` roda primeiro porque deixa em `saida/estado.json` quantos papéis
+# estão em destaque hoje, e é dele que as outras duas tiram o contador da barra de abas. Invertida a ordem,
 # o site publica com o contador do dia anterior — ou sem contador nenhum na primeira execução.
 #
 # Falha do BOVA11 derruba o job de propósito: `gerar_tela.py` encerra com erro quando o índice não
@@ -34,8 +34,8 @@ concurrency:
 jobs:
   publicar:
     runs-on: ubuntu-latest
-    # São três conjuntos de downloads (61 papéis para os gatilhos, 100 para a faixa extrema e 100
-    # para a triagem): 4 a 8 minutos no total. A folga cobre lentidão da fonte sem travar a fila.
+    # São dois conjuntos de downloads (100 papéis para a faixa extrema e 100 para a triagem):
+    # 3 a 6 minutos no total. A folga cobre lentidão da fonte sem travar a fila.
     timeout-minutes: 30
     environment:
       name: github-pages
@@ -56,13 +56,15 @@ jobs:
       - name: Rodar os testes
         run: pip install pytest && python -m pytest -q
 
-      # Primeiro os gatilhos: é este passo que grava `saida/estado.json`, lido pelos outros dois.
-      - name: Gerar a tela de gatilhos
-        run: python gerar_alertas.py
-
-      # A faixa extrema (v3) lê os cortes e as medidas exportados pelo laboratório em `estudo/`.
+      # Primeiro a faixa extrema (v3): ela lê os cortes e as medidas do laboratório em `estudo/` e
+      # grava `saida/estado.json`, de onde as outras duas tiram o contador. A tela de gatilhos (v2)
+      # foi descontinuada em 04/11/2026; o registro dela continua na página de método.
       - name: Gerar a tela da faixa extrema
         run: python gerar_extremos.py
+
+      # Bancos e elétricas (v4): lê os cortes do laboratório e o contador gravado pelo passo acima.
+      - name: Gerar a tela de bancos e elétricas
+        run: python gerar_setores.py
 
       - name: Gerar a tela de triagem
         run: python gerar_tela.py
@@ -77,9 +79,9 @@ jobs:
         run: |
           echo "conteúdo de saida/:"
           find saida -maxdepth 2 | sort
-          # As três páginas, os dois estilos e o estado do dia. Qualquer ausência aqui vira um 404
+          # As quatro páginas, os dois estilos e o estado do dia. Qualquer ausência aqui vira um 404
           # ou uma página sem formatação no ar — falha silenciosa, que só aparece ao abrir o site.
-          for arquivo in index.html alertas.html extremos.html metodo.html estilo.css estilo_componentes.css; do
+          for arquivo in index.html extremos.html setores.html metodo.html estilo.css estilo_componentes.css; do
             test -f "saida/$arquivo" \
               || { echo "::error::$arquivo não está na pasta publicada"; exit 1; }
           done

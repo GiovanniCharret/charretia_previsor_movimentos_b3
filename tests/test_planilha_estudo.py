@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import gerar_alertas
 import gerar_extremos
 from planilha_estudo import DICIONARIO, grava_planilha, link_planilha, monta_estudo
 
@@ -131,15 +130,3 @@ class TestLinkNasPaginas:
         sem = gerar_extremos.monta_pagina(t, self._ranking_v3(), "2026-10-09", 98)
         assert "dados/extremos_BOM3.xlsx" in com and "<th class='esq'>dados</th>" in com
         assert "dados/extremos_BOM3.xlsx" not in sem
-
-    def test_a_tela_de_gatilhos_tambem_tem_a_coluna_de_dados(self):
-        a = pd.DataFrame([{"posicao_papel": 2, "total_papeis": 61, "ticker": "VALE3",
-                           "horizonte": 45, "janela_de": 24, "janela_ate": 28, "janela_ref": 26,
-                           "n_setups": 5, "episodios": 40, "protecao": 0.8, "prot_lo": 0.59,
-                           "taxa_base": 0.55, "divisoes_usadas": 5,
-                           "inicio_medido": "2006-01-02", "fim_medido": "2026-09-11"}])
-        t = (RAIZ / "template_alertas.html").read_text(encoding="utf-8")
-        html = gerar_alertas.monta_pagina(t, a, "2026-10-09", 61, {"VALE3"})
-        assert "dados/gatilhos_VALE3.xlsx" in html and "<th class='esq'>dados</th>" in html
-        # A janela que a planilha abre é a do melhor setup da faixa.
-        assert gerar_alertas.ranqueia_papeis(a).iloc[0]["janela_ref"] == 26

@@ -256,17 +256,17 @@ def _travessia(n_alerta):
     Saída: string com o HTML do parágrafo.
     """
     explica = ("É outra pergunta e outra medida: aqui a escala é a mesma para todos os papéis; lá "
-               "cada papel tem o setup que o estudo aprovou para ele.")
+               "cada papel é comparado com os dias mais extremos da própria história.")
     # Fase 1: ainda não medido.
     if n_alerta is None:
-        return f"{explica} <a href='alertas.html'>Ver os gatilhos de proteção →</a>"
-    # Fase 2: medido e vazio, ou medido com gatilhos.
+        return f"{explica} <a href='extremos.html'>Ver a faixa extrema →</a>"
+    # Fase 2: medido e vazio, ou medido com destaques.
     if n_alerta == 0:
-        return (f"<b>Nenhum gatilho de proteção acionado hoje</b> — o resultado esperado na maioria "
-                f"dos pregões. {explica} <a href='alertas.html'>Ver a tela de gatilhos →</a>")
-    pp = "papéis" if n_alerta > 1 else "papel"
-    return (f"<b>Hoje {n_alerta} {pp} acionaram gatilhos de proteção.</b> {explica} "
-            f"<a href='alertas.html'>Ver os gatilhos →</a>")
+        return (f"<b>Nenhum destaque na faixa extrema hoje</b> — o resultado esperado na maioria "
+                f"dos pregões. {explica} <a href='extremos.html'>Ver a faixa extrema →</a>")
+    pp = "papéis estão" if n_alerta > 1 else "papel está"
+    return (f"<b>Hoje {n_alerta} {pp} em destaque na faixa extrema.</b> {explica} "
+            f"<a href='extremos.html'>Ver os destaques →</a>")
 
 
 def monta_pagina(indice, papeis, template, top_n=config.DIST_TOP_N, agora=None,
@@ -335,7 +335,7 @@ def monta_pagina(indice, papeis, template, top_n=config.DIST_TOP_N, agora=None,
             f'</tr>')
 
     # Fase 3: substituir todos os marcadores.
-    # A barra e a travessia vêm do estado que `gerar_alertas.py` deixou. Ausência dele não é erro:
+    # A barra e a travessia vêm do estado que `gerar_extremos.py` deixou. Ausência dele não é erro:
     # a barra sai sem contador e a travessia sem número, que é o correto quando ainda não se mediu.
     estado = estado or {}
     n_alerta = estado.get("papeis_com_alerta")
@@ -433,7 +433,7 @@ def main() -> None:
     # Fase 4: montar e gravar.
     saida = aqui / "saida"; saida.mkdir(exist_ok=True)
     destino = saida / "index.html"
-    # O estado vem de `gerar_alertas.py`, que roda antes no fluxo de publicação. Ausência não é
+    # O estado vem de `gerar_extremos.py`, que roda antes no fluxo de publicação. Ausência não é
     # erro: a barra sai sem contador, que é o correto quando ainda não se mediu.
     estado = le_estado(saida)
     destino.write_text(monta_pagina(indice, papeis, template, config.DIST_TOP_N, estado=estado),

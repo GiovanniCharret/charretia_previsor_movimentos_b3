@@ -32,8 +32,8 @@ from nucleo.data import load_prices                         # download (único p
 from nucleo.features_mma import build_features              # distância até a média
 from nucleo.qualidade_dados import apara_inicio             # corta a cabeça anterior à listagem
 from nucleo.faixas import add_dist_zscore                   # distância ÷ desvio-padrão móvel
-from gerar_alertas import pregoes_necessarios, periodo_do_download   # quanto baixar
-from publicacao import barra_de_abas, copia_estatica, le_estado      # o que as páginas dividem
+from math import ceil                                       # arredondamento do período
+from publicacao import barra_de_abas, copia_estatica, grava_estado   # o que as páginas dividem
 from planilha_estudo import grava_estudo_do_papel, link_planilha     # a planilha de estudo
 
 # Colunas da tabela do dia, fixadas para a página saber desenhar o caso vazio.
@@ -45,6 +45,41 @@ COLUNAS = ["ticker", "faixa", "janelas", "janelas_2_5", "janelas_5", "janelas_me
 # medida em 45. É o mesmo critério da tela de gatilhos — o número da linha é o do prazo mais longo
 # disponível, que é o prazo em que o usuário monta posição.
 HORIZONTES_PREFERIDOS = (45, 20)
+
+
+def pregoes_necessarios(janela_maxima, vol_lag, folga):
+    """
+    Quantos pregões precisam ser baixados para o escore de HOJE existir.
+
+    Por que existe: o escore padronizado é a distância até a média dividida pelo desvio-padrão móvel
+    dessa distância. A distância só existe depois de `janela` pregões; o desvio, depois de mais
+    `vol_lag`. Com a janela de 200 e o desvio de um ano (252), são 451 pregões antes de haver um
+    único escore. (Veio de `gerar_alertas.py`, descontinuado em 04/11/2026.)
+
+    Entrada: janela_maxima (a maior média móvel do papel), vol_lag (janela do desvio móvel),
+    folga (pregões extras para feriados e a diferença entre dias de calendário e pregões).
+    Fase 1: somar as duas janelas, descontando a sobreposição de um pregão, e acrescentar a folga.
+    Saída: int com o número de pregões.
+    """
+    # Fase 1: o -1 é a sobreposição — o primeiro dia do desvio é o último dia da média.
+    return int(janela_maxima) + int(vol_lag) - 1 + int(folga)
+
+
+def periodo_do_download(pregoes, pregoes_por_ano):
+    """
+    Converte "preciso de N pregões" no período que o provedor de dados aceita.
+
+    Por que existe: o provedor recebe períodos relativos ("2y"), não contagens. Arredondar para
+    baixo produziria escore ausente em silêncio — a página diria "nenhum destaque" sem distinguir
+    "não disparou" de "não foi possível medir".
+
+    Entrada: pregoes (quantos são necessários), pregoes_por_ano.
+    Fase 1: dividir e arredondar para CIMA, nunca para baixo.
+    Fase 2: nunca menos de um ano, por mais curta que seja a janela.
+    Saída: string no formato aceito pelo provedor, como "2y".
+    """
+    # Fase 1 e 2: arredonda para cima, com piso de um ano.
+    return f"{max(1, ceil(pregoes / pregoes_por_ano))}y"
 
 
 def escores_de_hoje(prices, janelas, vol_lag, slope_lag):
@@ -258,10 +293,10 @@ def _pct(x):
     return "—" if pd.isna(x) else f"{100 * x:.1f}%"
 
 
-def _linha_html(r, planilhas=()):
-    """Uma linha da tabela (helper de renderização)."""
+def _linha_html(r, planilhas=(), prefixo="extremos"):
+    """Uma linha da tabela; `prefixo` é o da planilha, para a v4 reaproveitar (helper)."""
     # O link da planilha de estudo só aparece quando o arquivo foi de fato gravado.
-    dados = (link_planilha(f"extremos_{r['ticker']}.xlsx", r["ticker"])
+    dados = (link_planilha(f"{prefixo}_{r['ticker']}.xlsx", r["ticker"])
              if r["ticker"] in planilhas else "<span class='posicao'>—</span>")
     # As janelas em que o papel está no extremo da faixa DESTA tabela, como na tela de gatilhos.
     janelas = r["janelas"] or "—"
@@ -282,14 +317,14 @@ def _linha_html(r, planilhas=()):
             f"</tr>")
 
 
-def _secao_html(titulo, nota, d, planilhas=()):
-    """Uma das duas seções da página, com a tabela ou o aviso de que está vazia (helper)."""
+def _secao_html(titulo, nota, d, planilhas=(), prefixo="extremos"):
+    """Uma seção da página, com a tabela ou o aviso de que está vazia; a v4 também a usa (helper)."""
     cabeca = f"<div class='secao'><h2>{titulo}</h2><span class='nota'>{nota}</span></div>"
     # Seção vazia diz isso com todas as letras: é o caso comum, e não pode parecer falha.
     if d.empty:
         return cabeca + ("<div class='quadro'><table><tbody><tr><td class='esq'>"
                          "<span class='posicao'>nenhum destaque hoje</span></td></tr></tbody></table></div>")
-    linhas = "".join(_linha_html(r, planilhas) for _, r in d.iterrows())
+    linhas = "".join(_linha_html(r, planilhas, prefixo) for _, r in d.iterrows())
     return (cabeca + "<div class='quadro'><table><thead><tr>"
             "<th class='esq'>papel</th>"
             "<th class='esq'>janela <span class='sub2'>(faixa de janelas)</span></th>"
@@ -308,7 +343,7 @@ def monta_pagina(template, tabela, data_pregao, n_papeis, n_alerta=None, planilh
     Por que existe: separa a renderização do cálculo, para os testes cobrirem a página sem rede.
 
     Entrada: template (string com os marcadores), tabela (saída de `monta_tabela`), data_pregao,
-    n_papeis (quantos foram verificados), n_alerta (contador da aba de gatilhos; None se não medido).
+    n_papeis (quantos foram verificados), n_alerta (contador de destaques da aba; None se não medido).
     Fase 1: separar os destaques (frequência acima da taxa-base) e montar o resumo do dia.
     Fase 2: as duas seções, a de 2,5% primeiro.
     Fase 3: os marcadores.
@@ -422,11 +457,13 @@ def main() -> None:
                                  r["horizonte"], float(r["faixa"])):
             planilhas.add(t)
     html = monta_pagina((raiz / "template_extremos.html").read_text(encoding="utf-8"), tabela,
-                        data_pregao, len(papeis), le_estado(saida).get("papeis_com_alerta"),
+                        data_pregao, len(papeis), destaques,
                         planilhas)
     (saida / "extremos.html").write_text(html, encoding="utf-8", newline="\n")
     copia_estatica(raiz, saida)
     tabela.to_csv(saida / "faixa_extrema_do_dia.csv", index=False, lineterminator="\n")
+    # O estado do dia: é dele que a triagem e o método tiram o contador da aba "Faixa extrema".
+    grava_estado(saida, destaques, len(tabela), data_pregao)
     print(f"Página gravada em {saida / 'extremos.html'}")
 
 

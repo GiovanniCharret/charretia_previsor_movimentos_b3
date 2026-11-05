@@ -156,7 +156,7 @@ def main() -> None:
     """
     raiz = Path(__file__).resolve().parent
     saida = raiz / config.DIR_SAIDA
-    # Fase 1: o contador vem do gerador de alertas; ausência não é erro.
+    # Fase 1: o contador vem do gerador da faixa extrema; ausência não é erro.
     estado = le_estado(saida)
     n_alerta = estado.get("papeis_com_alerta")
     print(f"PÁGINA DE MÉTODO — {len(VERSOES)} versões registradas")

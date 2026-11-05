@@ -66,16 +66,12 @@ SLOPE_LAG = 5
 
 
 # ============================================================================
-# v2 — GATILHOS DE PROTEÇÃO (`gerar_alertas.py`)
+# Download do dia (`gerar_extremos.py`)
 # ============================================================================
 #
-# Estes vêm dos achados N a U. Diferença de fundo em relação à v1: lá a janela e o horizonte são
-# fixos e iguais para todos os papéis; aqui cada papel usa os setups que o estudo aprovou para ele,
-# lidos de `estudo/setups.csv`. Nenhum destes valores é escolhido aqui — todos vêm da varredura.
-
-# A faixa que dispara: o decil 0, o décimo mais afastado PARA BAIXO. Foi a faixa medida nos
-# achados O a U; usar outra desfaria a correspondência entre o alerta e a proteção que ele exibe.
-FAIXA_ALVO = 0
+# A v2 (gatilhos de proteção) usava este bloco e foi descontinuada em 04/11/2026; as constantes que
+# só ela lia (`FAIXA_ALVO`, `ARQUIVO_SETUPS`) saíram junto. As duas abaixo ficaram, porque a faixa
+# extrema também baixa só o necessário para o escore de hoje.
 
 # Folga de pregões somada ao mínimo teórico do download. Cobre feriados, dias sem negócio e a
 # diferença entre dias de calendário e pregões, que varia de papel para papel.
@@ -83,12 +79,6 @@ FOLGA_PREGOES = 40
 
 # Quantos pregões por ano, para converter "preciso de N pregões" no período que o provedor aceita.
 PREGOES_POR_ANO = 248
-
-# Onde estão os setups aprovados, exportados pelo laboratório. O arquivo traz, por linha, um setup
-# (papel, horizonte, janela) e o CORTE do decil daquele par (papel, janela), medido lá sobre a
-# história completa. A aplicação não recalcula o corte: com a história curta que ela baixa, o corte
-# da GGBR4 com janela 200 ia de −2,010 para +0,465 — trocava de sinal. Ver `estudo/PROVENIENCIA.md`.
-ARQUIVO_SETUPS = "estudo/setups.csv"
 
 # ============================================================================
 # v3 — FAIXA EXTREMA (`gerar_extremos.py`)
@@ -108,6 +98,33 @@ ARQUIVO_FAIXA_MEDIDAS = "estudo/faixa_extrema_medidas.csv"
 # A mesma medida janela a janela. É dela que sai a frequência da linha: a média das janelas em que o
 # papel está no extremo hoje (pedido do usuário em 19/10/2026).
 ARQUIVO_FAIXA_POR_JANELA = "estudo/faixa_extrema_por_janela.csv"
+
+# ============================================================================
+# v4 — BANCOS E ELÉTRICAS (`gerar_setores.py`) — hipótese em observação
+# ============================================================================
+#
+# Vem do teste por setor do laboratório (04/11/2026): no decil 0, em 45 pregões, elétricas e bancos
+# tiveram os menores valores-p entre 66 testes, sem sobreviver à correção. A lista de papéis, o
+# corte e o horizonte vêm travados nos arquivos abaixo, exportados por `robusta_ml.setores_v4`.
+# Ver `estudo/PROVENIENCIA_SETORES.md`.
+
+# O limiar de cada (papel, janela) no decil 0, medido sobre a história completa, com o setor.
+ARQUIVO_SETORES_CORTES = "estudo/setores_cortes.csv"
+
+# A frequência por dia e a taxa-base de cada (papel, janela), em 45 pregões.
+ARQUIVO_SETORES_POR_JANELA = "estudo/setores_por_janela.csv"
+
+# O corte da hipótese: os 10% de dias mais afastados para baixo (o decil 0 da antiga v2).
+SETORES_PERCENTIL = 0.10
+
+# Como cada setor aparece na página, na ordem das seções. A chave é o nome da classificação.
+SETORES_ROTULOS = {"Energia Elétrica": "Elétricas", "Intermediários Financeiros": "Bancos"}
+
+# A nota ao lado do título de cada seção: o resultado que pôs o setor em observação.
+SETORES_NOTAS = {
+    "Energia Elétrica": "dez papéis · no teste, +8,5 pontos sobre a taxa-base (valor-p bruto 0,007)",
+    "Intermediários Financeiros": "oito papéis · no teste, +9,7 pontos sobre a taxa-base (valor-p bruto 0,016)",
+}
 
 # ============================================================================
 # Comum às duas versões

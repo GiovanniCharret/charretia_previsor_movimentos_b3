@@ -30,6 +30,73 @@ Ordem da lista: da mais recente para a mais antiga. A primeira é a que a págin
 
 VERSOES = [
     {
+        "id": "v4",
+        "nome": "Bancos e elétricas",
+        "estado": "em observação",
+        "classe_estado": "e-observacao",
+        "data": "04/11/2026",
+        "origem": "teste por setor",
+        "pergunta": "Que bancos e elétricas fecharam hoje no <b>decil 0</b> — os 10% de dias mais "
+                    "afastados para baixo da própria média —, os dois setores em que esse corte "
+                    "apareceu no topo do teste por setor?",
+        "parametros": [
+            ("papéis", "18 · 10 elétricas e 8 bancos"),
+            ("janelas", "5, 10, 20, 30, 45, 60, 90, 130, 200"),
+            ("corte", "percentil de 10% (decil 0)"),
+            ("horizonte", "45 pregões"),
+            ("medida", "frequência por dia, do próprio papel"),
+            ("desvio da distância", "252 pregões"),
+            ("divisões da validação", "5 · 2006 → 2027"),
+            ("teste por setor", "11 setores, 56 papéis"),
+            ("placebo", "uma moeda por data · 814 séries"),
+            ("excesso, elétricas · bancos", "+8,5 · +9,7 pontos"),
+            ("valor-p bruto, elétricas · bancos", "0,007 · 0,016"),
+            ("após a correção por 66 testes", "nenhum sobrevive"),
+        ],
+        "passos": [
+            ("Agrupar por setor",
+             "A distância normalizada da v3 põe no mesmo bolo papéis de volatilidade baixa por "
+             "qualidade e por falta de atratividade. Somar os casos dentro do setor aumenta o número "
+             "de casos sem misturar mineradora com elétrica."),
+            ("Setores com três papéis ou mais",
+             "Setor da classificação do Fundamentus, completado pelo screening legado. Ficaram 11 "
+             "setores e 56 papéis depois da peneira de qualidade; \"Diversos\" ficou de fora."),
+            ("Cada papel com o próprio corte",
+             "O corte é o percentil do próprio papel, calculado só no treino de cada divisão. O "
+             "setor é a média dos excessos dos papéis, cada um com o mesmo peso."),
+            ("Dois testes fixados antes",
+             "O principal pergunta se os setores diferem entre si; o secundário, se cada setor bate "
+             "o placebo, com a correção de Benjamini e Hochberg sobre os 66 testes."),
+            ("O resultado",
+             "Os setores <b>não</b> diferem mais do que o acaso, e nenhum teste sobrevive à correção. "
+             "Os menores valores-p brutos ficaram todos nos dois maiores setores — elétricas e "
+             "bancos — e o decil 0 aparece entre eles."),
+            ("Por que acompanhar, e não concluir",
+             "Os dois setores foram escolhidos por terem saído no topo. Medi-los de novo nos mesmos "
+             "dados confirmaria a escolha, não o efeito. A confirmação vem dos <b>pregões "
+             "futuros</b>, e a lista fica travada para isso."),
+            ("A tabela é a da v3",
+             "Uma seção por setor; em cada linha, as janelas em que o papel está no decil 0 hoje, e a "
+             "frequência e a taxa-base <b>do próprio papel</b> nessas janelas, em 45 pregões. Só "
+             "aparece quem supera a própria taxa-base."),
+        ],
+        "titulo_mudou": "O que esta versão acompanha que a anterior não acompanhava",
+        "mudou": [
+            "<b>O decil 0 volta à tela, mas só em dois setores.</b> Na v3, juntando todos os papéis, "
+            "o corte de 10% ficou abaixo do que o acaso permitiria; nas elétricas e nos bancos ele "
+            "apareceu entre os menores valores-p.",
+            "<b>É uma hipótese, não um achado.</b> Depois da correção pelos 66 testes nenhum setor "
+            "se sustenta sozinho, e o setor como rótulo não separou os papéis no teste principal.",
+            "<b>A v3 continua em produção.</b> A v4 fica ao lado dela até os pregões futuros "
+            "decidirem.",
+        ],
+        "notas": [],
+        "receita": "<b>1.</b> A v4 está no ar ao lado da v3; os dados vêm do laboratório:\n"
+                   "   <code>$env:PYTHONPATH=\"src\"; uv run python -m robusta_ml.setores_v4</code>\n"
+                   "<b>2.</b> Para retirá-la, tire a aba de <code>publicacao.PAGINAS</code> e o passo\n"
+                   "   do fluxo de publicação, e troque o estado neste registro.",
+    },
+    {
         "id": "v3",
         "nome": "Faixa extrema",
         "estado": "em produção",
@@ -119,8 +186,8 @@ VERSOES = [
     {
         "id": "v2",
         "nome": "Gatilhos de proteção",
-        "estado": "mantida",
-        "classe_estado": "e-mantida",
+        "estado": "descontinuada",
+        "classe_estado": "e-descontinuada",
         "data": "07/09/2026",
         "origem": "achados N a U",
         "pergunta": "Em que papel, hoje, um gatilho técnico indica <b>não perder</b> nos próximos "
@@ -203,11 +270,17 @@ VERSOES = [
                            "os papéis principalmente pelo que afeta essa contagem, e não por "
                            "previsibilidade. A página continua no ar, com um aviso, porque registra "
                            "o caminho da pesquisa; a medida corrigida é a da v3."),
+            ("04/11/2026", "<b>Descontinuada.</b> Depois de duas semanas usando a v3, o usuário "
+                           "concluiu que ela substitui a v2 com mais critério: a página "
+                           "<code>alertas.html</code> saiu do site e o gerador saiu do fluxo de "
+                           "publicação. Fica este registro — a pergunta, os parâmetros, o passo a "
+                           "passo e o que se descobriu sobre a medida dela."),
         ],
-        "receita": "<b>1.</b> A página de gatilhos continua sendo gerada por <code>gerar_alertas.py</code>;\n"
-                   "   para voltar a tratá-la como a versão vigente, remova o aviso do topo de\n"
-                   "   <code>template_alertas.html</code> e troque os estados neste registro.\n"
-                   "<b>2.</b> Ela depende de <code>estudo/setups.csv</code>, exportado pelo laboratório.\n"
+        "receita": "<b>1.</b> O código da v2 está no commit <code>84bfcb5</code> do repositório de publicação:\n"
+                   "   <code>git checkout 84bfcb5 -- gerar_alertas.py template_alertas.html \\\n"
+                   "     estudo/setups.csv estudo/PROVENIENCIA.md tests/test_gerar_alertas.py \\\n"
+                   "     tests/test_ranqueia_papeis.py</code>\n"
+                   "<b>2.</b> Devolva a aba em <code>publicacao.PAGINAS</code> e o passo no fluxo de publicação.\n"
                    "<b>3.</b> Antes de voltar, leia o achado W: os números desta versão comparam\n"
                    "   uma medida por episódio com uma taxa-base por dia.",
     },

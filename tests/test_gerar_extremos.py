@@ -239,9 +239,23 @@ class TestPagina:
         assert 'href="extremos.html" aria-current="page"' in html
 
 
-def test_a_tela_de_gatilhos_avisa_que_a_medida_dela_nao_passou_no_controle():
-    # A v2 continua no ar porque conta a evolução da pesquisa — mas quem abre a página precisa
-    # saber, na própria página, que o limite inferior dela não é vantagem sobre a taxa-base.
-    html = (RAIZ / "template_alertas.html").read_text(encoding="utf-8")
-    assert "versão anterior da pesquisa" in html
-    assert 'href="extremos.html"' in html
+class TestQuantoBaixar:
+    # As duas contas vieram de `gerar_alertas.py`, descontinuado em 04/11/2026.
+    def test_pregoes_necessarios_soma_janela_desvio_e_folga(self):
+        # O escore de hoje só existe depois de `janela + desvio - 1` pregões: com janela 200 e 200
+        # dias baixados, não haveria escore nenhum.
+        from gerar_extremos import pregoes_necessarios
+        assert pregoes_necessarios(200, vol_lag=252, folga=40) == 200 + 252 - 1 + 40
+
+    def test_periodo_do_download_arredonda_para_cima_e_nunca_encolhe(self):
+        # Pedir menos que o necessário produziria escore ausente em silêncio.
+        from gerar_extremos import periodo_do_download
+        assert periodo_do_download(491, pregoes_por_ano=248) == "2y"
+        assert periodo_do_download(700, pregoes_por_ano=248) == "3y"
+        assert periodo_do_download(50, pregoes_por_ano=248) == "1y"
+
+
+def test_a_pagina_nao_aponta_para_a_tela_de_gatilhos_descontinuada():
+    # A v2 saiu do site em 04/11/2026: um link para `alertas.html` viraria um 404.
+    html = (RAIZ / "template_extremos.html").read_text(encoding="utf-8")
+    assert "alertas.html" not in html

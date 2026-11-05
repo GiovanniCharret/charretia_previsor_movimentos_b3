@@ -15,20 +15,26 @@ class TestBarraDeAbas:
             assert nome in html
 
     def test_a_pagina_atual_e_marcada_e_as_outras_nao(self):
-        html = barra_de_abas("gatilhos")
+        html = barra_de_abas("extremos")
         # Uma única marca de página atual — é ela que o estilo e os leitores de tela usam.
         assert html.count('aria-current="page"') == 1
-        assert 'href="alertas.html" aria-current="page"' in html
+        assert 'href="extremos.html" aria-current="page"' in html
 
-    def test_o_contador_aparece_quando_ha_gatilho(self):
-        # É o elemento que faz as duas telas conviverem: da triagem dá para ver que HÁ gatilhos hoje
-        # sem precisar abrir a outra página.
+    def test_a_tela_de_gatilhos_saiu_da_barra(self):
+        # Descontinuada em 04/11/2026: a barra não pode apontar para uma página que não é mais
+        # gerada — o link viraria um 404 no site.
+        html = barra_de_abas("triagem")
+        assert "alertas.html" not in html and len(PAGINAS) == 4
+
+    def test_o_contador_aparece_quando_ha_destaque(self):
+        # Da triagem dá para ver que HÁ destaques na faixa extrema hoje sem precisar abrir a página.
+        # O contador fica na aba da faixa extrema desde que a tela de gatilhos saiu (04/11/2026).
         assert "3 papéis" in barra_de_abas("triagem", 3)
         assert "1 papel" in barra_de_abas("triagem", 1)
 
     def test_o_contador_some_no_dia_vazio_em_vez_de_exibir_zero(self):
-        # Um "0" permanente ensina o olho a ignorar o lugar onde o número aparece. E a página de
-        # gatilhos fica vazia na MAIORIA dos pregões, então o zero seria o estado quase constante.
+        # Um "0" permanente ensina o olho a ignorar o lugar onde o número aparece. E a faixa
+        # extrema fica vazia na MAIORIA dos pregões, então o zero seria o estado quase constante.
         assert "selo" not in barra_de_abas("triagem", 0)
 
     def test_sem_medida_tambem_nao_ha_contador(self):
@@ -39,7 +45,7 @@ class TestBarraDeAbas:
 
 
 class TestEstadoEntrePaginas:
-    def test_grava_e_le_o_que_o_gerador_de_alertas_descobriu(self):
+    def test_grava_e_le_o_que_o_gerador_da_faixa_extrema_descobriu(self):
         import tempfile
         from pathlib import Path
         with tempfile.TemporaryDirectory() as d:
@@ -51,7 +57,7 @@ class TestEstadoEntrePaginas:
             assert e["data_pregao"] == "2026-09-04"
 
     def test_ausencia_do_arquivo_nao_e_erro(self):
-        # A ordem de execução põe os alertas primeiro, mas nada garante isso quando alguém roda um
+        # A ordem de execução põe a faixa extrema primeiro, mas nada garante isso quando alguém roda um
         # gerador sozinho para conferir. A triagem precisa sair mesmo assim.
         import tempfile
         from pathlib import Path

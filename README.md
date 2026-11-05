@@ -7,14 +7,14 @@ Gera **quatro páginas estáticas**, publicadas diariamente no GitHub Pages:
 | página | pergunta que responde |
 |---|---|
 | `index.html` — **triagem** | onde cada papel líquido está hoje na escala de afastamento da média móvel, e o que historicamente aconteceu depois de dias naquela posição |
-| `alertas.html` — **gatilhos** | quais papéis fecharam hoje numa faixa que o estudo mediu como protetiva — uma tabela só, um papel por linha, ordenada pelo alcance dos horizontes em que ele dispara |
 | `extremos.html` — **faixa extrema** (a versão vigente) | quais papéis fecharam hoje entre os 2,5% ou 5% de dias mais afastados para baixo da própria média — a única faixa em que restou indício depois do controle com preços sem memória |
-| `metodo.html` — **método** | como cada versão da tela funciona, com que parâmetros, e como voltar a uma versão anterior |
+| `setores.html` — **bancos e elétricas** (em observação) | quais dos 18 bancos e elétricas fecharam hoje no decil 0 — os dois setores que saíram no topo do teste por setor, acompanhados como hipótese |
+| `metodo.html` — **método** | como cada versão da tela funciona, com que parâmetros, e como voltar a uma versão anterior — inclusive a v2 (gatilhos de proteção), descontinuada em 04/11/2026 |
 
-As duas primeiras convivem porque respondem perguntas diferentes: a triagem sempre tem os setenta
-papéis para mostrar; a de gatilhos fica **vazia na maioria dos pregões**, porque os episódios são
-raros por definição. Por isso a triagem é a página de entrada, e um contador na barra de abas avisa
-quando há gatilhos sem exigir que o visitante abra a outra página.
+As duas primeiras convivem porque respondem perguntas diferentes: a triagem sempre tem papéis
+para mostrar; a faixa extrema fica **vazia na maioria dos pregões**, porque os dias tão afastados
+são raros por definição. Por isso a triagem é a página de entrada, e um contador na barra de abas
+avisa quando há destaques na faixa extrema sem exigir que o visitante abra a outra página.
 
 Este repositório é a **publicação**. A pesquisa que o originou vive no repositório irmão
 [`rebuild_robusta_backtests`](https://github.com/GiovanniCharret/robusta_backtest) — aqui não se
@@ -25,26 +25,27 @@ mede nada novo, apenas se aplica o que já foi medido e validado fora da amostra
 | arquivo | papel |
 |---|---|
 | `gerar_tela.py` | gerador da **triagem**: baixa, peneira, calcula o estado de hoje, grava a página e as planilhas |
-| `gerar_alertas.py` | gerador dos **gatilhos**: cruza os setups aprovados com o fechamento de hoje |
 | `gerar_extremos.py` | gerador da **faixa extrema**: mostra em quais das nove médias o papel está abaixo do percentil de 2,5% ou de 5%, com a frequência dessas médias |
+| `gerar_setores.py` | gerador de **bancos e elétricas** (v4): reaproveita as funções da v3 com o corte do decil 0 e uma seção por setor |
 | `gerar_metodo.py` | gerador do **método**: não toca a rede, monta a página a partir de `versoes.py` |
 | `publicacao.py` | o que as três páginas dividem: a barra de abas, a cópia dos estilos e o estado do dia |
 | `versoes.py` | o **registro histórico** das versões: pergunta, parâmetros, passo a passo e receita de retorno |
 | `template*.html` | as três páginas com marcadores `{{...}}` |
 | `estilo.css`, `estilo_componentes.css` | o sistema visual e os componentes, ambos linkados pelas três páginas |
 | `lista_tickers_liquidos.xlsx` | os 100 papéis líquidos rastreados pela triagem (coluna `ticker`); é cópia da lista do laboratório |
-| `estudo/setups.csv` | os setups aprovados, **exportados pelo laboratório** (ver *Proveniência do estudo*) |
 | `estudo/faixa_extrema_cortes.csv`, `estudo/faixa_extrema_medidas.csv`, `estudo/faixa_extrema_por_janela.csv` | os limiares, as frequências agregadas e as frequências janela a janela da faixa extrema, **exportados pelo laboratório** por `robusta_ml.faixa_extrema` (ver `estudo/PROVENIENCIA_FAIXA_EXTREMA.md`) |
+| `estudo/setores_cortes.csv`, `estudo/setores_por_janela.csv` | os limiares do decil 0 e as frequências janela a janela dos 18 papéis da v4, com o setor, **exportados pelo laboratório** por `robusta_ml.setores_v4` (ver `estudo/PROVENIENCIA_SETORES.md`) |
 | `nucleo/` | cópia do que as telas usam do laboratório (ver *Proveniência do núcleo*) |
 | `saida/*.html` | as três páginas geradas |
-| `planilha_estudo.py` | monta a planilha de estudo das telas de gatilhos e da faixa extrema: a série linha a linha, com o treino e o teste de cada divisão |
+| `planilha_estudo.py` | monta a planilha de estudo da faixa extrema: a série linha a linha, com o treino e o teste de cada divisão |
 | `saida/dados/{TICKER}.xlsx` | uma planilha de estudo por papel visível na triagem |
-| `saida/dados/gatilhos_{TICKER}.xlsx`, `saida/dados/extremos_{TICKER}.xlsx` | uma planilha de estudo por papel exibido nas telas de gatilhos e da faixa extrema |
-| `saida/estado.json` | ligação entre geradores: quantos papéis dispararam hoje |
-| `saida/ranking_do_dia.csv` | o que a tela de gatilhos exibe: um papel por linha, já ordenado |
-| `saida/alertas.csv` | o detalhe por trás do ranking: uma linha por papel, horizonte e faixa de janelas |
+| `saida/dados/extremos_{TICKER}.xlsx` | uma planilha de estudo por papel em destaque na faixa extrema |
+| `saida/dados/setores_{TICKER}.xlsx` | uma planilha de estudo por papel em destaque na v4 |
+| `saida/setores_do_dia.csv` | o que a v4 exibe, linha a linha, incluindo os papéis no decil 0 que não viraram destaque |
+| `saida/estado.json` | ligação entre geradores: quantos papéis estão em destaque hoje na faixa extrema |
+| `saida/faixa_extrema_do_dia.csv` | o que a faixa extrema exibe, linha a linha, incluindo os papéis na faixa que não viraram destaque |
 
-**A ordem de execução importa.** `gerar_alertas.py` roda primeiro porque grava `saida/estado.json`,
+**A ordem de execução importa.** `gerar_extremos.py` roda primeiro porque grava `saida/estado.json`,
 de onde as outras duas tiram o contador da barra de abas. Invertida a ordem, o site publica com o
 contador do dia anterior — ou sem contador nenhum na primeira execução.
 
@@ -65,8 +66,8 @@ A tela roda sozinha, então o que ela usa do laboratório está **copiado** aqui
 | `config.py` | reescrito com as constantes que as telas leem, em dois blocos — um por versão |
 
 **Copiado do commit `e55455b48aca74c9742044815840472d0c310412`, em 23/08/2026, e resincronizado em
-07/09/2026** (`qualidade_dados.py` recebeu as duas funções do achado U, sem as quais
-`gerar_alertas.py` não roda).
+07/09/2026** (`qualidade_dados.py` recebeu as duas funções do achado U, usadas pela peneira de
+qualidade por divisão).
 
 O preço da cópia é a **deriva silenciosa**: alguém corrige o laboratório, a tela continua
 publicando o comportamento antigo, e nada avisa. Enquanto os dois repositórios estavam juntos, um
@@ -78,37 +79,12 @@ Ao mudar qualquer coisa em `robusta_ml/data.py`, `target.py`, `features_mma.py`,
 o commit de origem acima**. Nunca edite `nucleo/` diretamente: a correção se perderia na próxima
 recópia, e as duas versões divergiriam para sempre.
 
-## Proveniência do estudo — `estudo/setups.csv`
-
-A tela de gatilhos **não faz varredura nenhuma**. Ela lê `estudo/setups.csv`, gerado no laboratório
-por `robusta_ml.exporta_setups` e versionado aqui. O arquivo traz, por linha, um setup
-(papel, horizonte, janela) e — o que mais importa — o **corte do decil** daquele par (papel, janela),
-medido lá sobre a história completa.
-
-Por que o corte não é calculado aqui: a aplicação baixa só o necessário para o escore de hoje, uns
-dois anos. Estimar o corte com essa amostra foi tentado em 06/09/2026 e produziu um defeito grave —
-na GGBR4 com janela 200, o corte ia de **−2,010** (história completa) para **+0,465** (dois anos).
-Um corte positivo faria o "decil mais afastado para baixo" incluir dias com o preço *acima* da
-média. A divisão de trabalho é: **o laboratório baixa tudo e mede; a aplicação só lê e economiza.**
-
-`estudo/PROVENIENCIA.md` registra a data da exportação, o commit do laboratório que a produziu e se
-havia alterações não commitadas na ocasião. Para atualizar, a partir da raiz do laboratório:
-
-```powershell
-$env:PYTHONPATH="src"; uv run python -m robusta_ml.rank_protecao
-$env:PYTHONPATH="src"; uv run python -m robusta_ml.rank_protecao --cortes
-$env:PYTHONPATH="src"; uv run python -m robusta_ml.exporta_setups
-```
-
-O terceiro comando grava direto neste repositório. Como o `nucleo/`, é **sincronização manual**:
-nada avisa quando o laboratório avança e o arquivo aqui fica para trás.
-
-## As três versões, e por que a segunda continua no ar
+## As três versões, e por que a segunda saiu do ar
 
 | versão | página | situação |
 |---|---|---|
 | v1 — triagem por afastamento | `index.html` | mantida; página de entrada |
-| v2 — gatilhos de proteção | `alertas.html` | mantida **com aviso**: a medida dela não passou no controle |
+| v2 — gatilhos de proteção | (retirada) | **descontinuada em 04/11/2026**; fica só o registro na página de método |
 | v3 — faixa extrema | `extremos.html` | vigente; publica um **indício**, com esse nome |
 
 Em 12/10/2026 um controle com **preços sem memória** (os retornos reais de cada papel reordenados,
@@ -121,8 +97,19 @@ O que sobrou, contando **dias**, é uma escada: o excesso sobre a taxa-base cres
 zero. Contra o placebo conjunto, só um de seis testes passa de 5% — por isso a página diz
 "indício", e os limites inferiores por papel ficam abaixo da taxa-base em quase todas as linhas.
 
-A página da v2 não foi retirada porque conta o caminho da pesquisa; ela abre com o aviso do que os
-números dela valem.
+A página da v2 ficou no ar, com aviso, entre 12/10 e 04/11/2026, porque contava o caminho da
+pesquisa. Depois de duas semanas de uso, a v3 a substituiu com mais critério e ela saiu do site. A
+pergunta, os parâmetros, o passo a passo e a receita de retorno (o código está no commit `84bfcb5`)
+continuam em `versoes.py`, publicados na página de método.
+
+### A v4 — bancos e elétricas, em observação
+
+Nasceu do teste por setor de 04/11/2026 no laboratório. Os setores, juntos, não diferiram mais do
+que o acaso, e nenhum dos 66 testes sobreviveu à correção. Mas os menores valores-p brutos ficaram
+todos nas elétricas e nos bancos, com o decil 0 entre eles: +8,5 e +9,7 pontos sobre a taxa-base em
+45 pregões. Como os dois setores foram escolhidos por terem saído no topo, só os pregões futuros
+confirmam. A página acompanha os 18 papéis, com a lista travada. A tabela é a da v3, com a
+frequência do próprio papel, uma seção por setor e só o corte de 10%, no horizonte de 45 pregões.
 
 ### Como a tabela da faixa extrema se lê
 
@@ -176,11 +163,11 @@ tamanho do horizonte) e o teste começa em 2021-01-04. As 45 últimas linhas fic
 porque o retorno de 45 pregões à frente ainda não existe — e é entre elas que está o pregão de hoje,
 o que a tela reporta.
 
-## As planilhas de estudo das telas de gatilhos e da faixa extrema
+## As planilhas de estudo da faixa extrema
 
-Cada papel exibido nessas duas telas ganha, na última coluna, um arquivo do Excel. Ele existe para
-**ver** o arranjo de treino e teste, que nessas telas é a validação encadeada (várias divisões), e
-não a divisão única da triagem:
+Cada papel em destaque ganha, na última coluna, um arquivo do Excel. Ele existe para **ver** o
+arranjo de treino e teste, que nesta tela é a validação encadeada (várias divisões), e não a
+divisão única da triagem:
 
 - **uma aba por janela** (`janela 20`, por exemplo), com `Close`, a média, a distância, o escore, o
   retorno seguinte e as colunas do arranjo: `divisao` (em qual divisão a linha é testada),
@@ -188,11 +175,10 @@ não a divisão única da triagem:
   (o limiar calculado só com as linhas anteriores), `na_faixa` e `episodio`;
 - **a aba `divisões`**, com uma linha por divisão: de onde até onde foi o treino, o corte, quantos
   dias ficaram na faixa, a frequência por dia (a conta da faixa extrema) e os episódios positivos
-  (a conta dos gatilhos), ao lado da taxa-base;
+  (a conta da antiga tela de gatilhos, mantida para comparar), ao lado da taxa-base;
 - **a aba `dicionário`**, que explica cada coluna.
 
-Na tela de gatilhos a aba é a da janela do melhor setup da faixa, no horizonte principal. Na faixa
-extrema há uma aba para cada média em que o papel está no extremo hoje. O cálculo repete, para um
+Há uma aba para cada média em que o papel está no extremo hoje. O cálculo repete, para um
 papel, o que o laboratório faz; os números da tela continuam vindo de `estudo/`. Para isso o gerador
 baixa a história completa dos papéis exibidos — só deles —, e um papel cuja planilha falhe fica sem
 o link em vez de derrubar a página.
@@ -207,38 +193,26 @@ pip install -r requirements.txt pytest
 # 1. Testes — offline, com preços sintéticos, não tocam a rede
 python -m pytest -q
 
-# 2. Gerar as três páginas com dados reais. A ORDEM importa: `gerar_alertas.py` grava
+# 2. Gerar as quatro páginas com dados reais. A ORDEM importa: `gerar_extremos.py` grava
 #    `saida/estado.json`, de onde as outras duas tiram o contador da barra de abas.
 #    São os mesmos comandos que o GitHub Actions roda.
-python gerar_alertas.py     # 61 papéis, ~1 minuto
-python gerar_extremos.py    # 61 papéis, ~1 minuto
-python gerar_tela.py        # 70 papéis, ~1 minuto
+python gerar_extremos.py    # 100 papéis, ~1 minuto
+python gerar_setores.py     # 18 papéis, segundos
+python gerar_tela.py        # 100 papéis, ~1 minuto
 python gerar_metodo.py      # sem rede, instantâneo
 
 # 3. Abrir e conferir
 start saida\index.html
 ```
 
-Qualquer gerador roda sozinho, para conferência rápida — `python gerar_alertas.py PRIO3` verifica um
-papel só. Fora da ordem acima, a barra de abas sai **sem contador**, que é o comportamento correto
-quando ainda não se mediu: inventar um zero afirmaria que não houve gatilho, o que é diferente de
-não saber.
+Qualquer gerador roda sozinho, para conferência rápida. Fora da ordem acima, a barra de abas sai
+**sem contador**, que é o comportamento correto quando ainda não se mediu: inventar um zero
+afirmaria que não houve destaque, o que é diferente de não saber.
 
 ## O que conferir antes de publicar
 
-Os dois geradores que baixam mostram uma barra de andamento com o placar ao lado. Não há resumo no
-fim — a barra já carrega os totais.
-
-**`gerar_alertas.py`** anuncia só quem dispara, porque sessenta linhas de "sem disparo" enterrariam
-as que interessam. Quem ficou sem medida em todas as janelas também aparece: ausência de medida não
-é ausência de gatilho:
-
-```
-papéis: 72%|█████ | 44/61 [00:32<00:13, 1.27papel/s, gatilhos 3 | falhas 0]
-  DISPAROU LREN3    49/86 janelas
-  DISPAROU NATU3    1/121 janelas | 73 sem história
-  DISPAROU PRIO3    4/9 janelas
-```
+Os geradores que baixam mostram uma barra de andamento com o placar ao lado. Não há resumo no fim —
+a barra já carrega os totais.
 
 **`gerar_tela.py`** anuncia uma linha por papel, no momento em que ele é decidido:
 
@@ -262,15 +236,12 @@ Nas páginas abertas, confira:
 - **a barra de abas está formatada** nas três — abas espaçadas, com descritor embaixo do nome e
   sublinhado na página atual. Se ela sair como links sublinhados grudados, falta o link para
   `estilo_componentes.css` em algum template (aconteceu em 07/09/2026);
-- **o contador ao lado de "Gatilhos" concorda com a tabela** de `alertas.html`. Se divergirem, os
-  geradores rodaram fora de ordem;
-- **a tabela de gatilhos é uma só, com cada papel uma única vez**, e a coluna de horizontes traz o
-  principal em negrito (`45 · 20-10-5-3`). O limite inferior da linha tem de bater com o do
-  horizonte principal em `saida/ranking_do_dia.csv`;
+- **o contador ao lado de "Faixa extrema" concorda com os destaques** de `extremos.html`. Se
+  divergirem, os geradores rodaram fora de ordem;
 - **na faixa extrema, a seção de 2,5% só mostra médias que passaram do corte de 2,5%**, e a
   frequência de cada linha bate com `freq` em `saida/faixa_extrema_do_dia.csv`;
-- **quem está acima tem o horizonte principal maior**; empate desfaz pelo limite inferior;
-- **`alertas.html`, `extremos.html` e `metodo.html` abrem** pelas abas, sem 404;
+- **na v4, as duas seções (Elétricas e Bancos) aparecem sempre**, mesmo vazias, com o quadro "Uma hipótese em observação" no topo;
+- **`extremos.html`, `setores.html` e `metodo.html` abrem** pelas abas, sem 404, e nenhuma aba aponta para `alertas.html`;
 - **a faixa extrema mostra as duas seções sempre**, mesmo vazias ("nenhum papel hoje"), e o
   quadro "Um indício, não um achado" no topo;
 - **nenhum `{{MARCADOR}}` visível** — se aparecer, o template e o gerador saíram de sincronia;
@@ -289,7 +260,7 @@ por clique manual (`Run workflow`). O passo `configure-pages` usa `enablement: t
 próprio workflow habilita o Pages** na primeira execução — não é preciso acertar `Settings` → `Pages`
 à mão.
 
-Três pontos que mordem, todos aprendidos na marra:
+Quatro pontos que mordem, todos aprendidos na marra:
 
 1. **`schedule` e `workflow_dispatch` só valem na branch padrão.** Um workflow que existe apenas
    numa branch de trabalho não aparece para execução manual nem dispara no horário — fica invisível,
@@ -301,7 +272,7 @@ Três pontos que mordem, todos aprendidos na marra:
 3. **A rede é a única dependência externa.** O `yfinance` falha em alguns papéis de forma
    intermitente e os geradores seguem; se o **BOVA11** falhar, o processo para com erro, que é o
    comportamento certo.
-4. **A ordem dos três geradores está fixada no workflow.** `gerar_alertas.py` vem primeiro porque
+4. **A ordem dos geradores está fixada no workflow.** `gerar_extremos.py` vem primeiro porque
    grava o `saida/estado.json` que os outros dois leem. Trocar a ordem publica o contador do dia
    anterior — sem erro nenhum no log.
 
@@ -315,7 +286,7 @@ conteúdo anterior.
 é negativo em termos absolutos em cerca de metade dos casos. E não trata os papéis como apostas
 independentes: o efeito é de mercado inteiro, e por isso o índice vem antes de tudo na página.
 
-**A tela de gatilhos** mede uma coisa só: com que frequência o retorno seguinte foi positivo depois
+**A faixa extrema** mede uma coisa só: com que frequência o retorno seguinte foi positivo depois
 de dias como o de hoje, num papel de cada vez. Ela **não mede risco** — quanto o preço ainda cai
 antes de recuperar continua sem medida — e não diz quanto se ganha. A frase central do estudo é que
 a média móvel prevê a **direção, não a magnitude**.

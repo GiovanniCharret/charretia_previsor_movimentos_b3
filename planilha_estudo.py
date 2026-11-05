@@ -1,5 +1,5 @@
 """
-Planilha de estudo das telas de gatilhos (v2) e da faixa extrema (v3).
+Planilha de estudo da faixa extrema (v3). Até 04/11/2026 servia também à tela de gatilhos (v2).
 
 Por que este módulo existe: o usuário é estudante e pediu, para a v2 e a v3, o mesmo que a triagem
 já oferece — um arquivo do Excel por papel exibido, com a série linha a linha, para **ver** como o
