@@ -180,6 +180,11 @@ VERSOES = [
                            "que ele aparece. A frequência e a taxa-base da linha passaram a ser "
                            "<b>as dessas janelas</b>, e não a média das nove — mais coerente com o "
                            "que a linha mostra, ao custo de cada número vir de menos episódios."),
+            ("11/11/2026", "A tabela ganhou a coluna <b>gráficos</b>, antes de \"dados\": uma página "
+                           "por destaque com o retorno em 45 pregões em cada faixa de afastamento "
+                           "(os decis, com o primeiro aberto em 0–2,5%, 2,5–5% e 5–10%), uma janela "
+                           "por vez, com a faixa de hoje destacada. É leitura descritiva, com a "
+                           "história inteira do papel."),
         ],
         "receita": None,
     },

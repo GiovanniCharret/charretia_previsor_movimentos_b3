@@ -28,20 +28,22 @@ mede nada novo, apenas se aplica o que já foi medido e validado fora da amostra
 | `gerar_extremos.py` | gerador da **faixa extrema**: mostra em quais das nove médias o papel está abaixo do percentil de 2,5% ou de 5%, com a frequência dessas médias |
 | `gerar_setores.py` | gerador de **bancos e elétricas** (v4): reaproveita as funções da v3 com o corte do decil 0 e uma seção por setor |
 | `gerar_metodo.py` | gerador do **método**: não toca a rede, monta a página a partir de `versoes.py` |
-| `publicacao.py` | o que as três páginas dividem: a barra de abas, a cópia dos estilos e o estado do dia |
+| `publicacao.py` | o que as quatro páginas dividem: a barra de abas, a cópia dos estilos e o estado do dia |
 | `versoes.py` | o **registro histórico** das versões: pergunta, parâmetros, passo a passo e receita de retorno |
-| `template*.html` | as três páginas com marcadores `{{...}}` |
-| `estilo.css`, `estilo_componentes.css` | o sistema visual e os componentes, ambos linkados pelas três páginas |
+| `template*.html` | as quatro páginas com marcadores `{{...}}` |
+| `estilo.css`, `estilo_componentes.css` | o sistema visual e os componentes, ambos linkados pelas quatro páginas |
 | `lista_tickers_liquidos.xlsx` | os 100 papéis líquidos rastreados pela triagem (coluna `ticker`); é cópia da lista do laboratório |
 | `estudo/faixa_extrema_cortes.csv`, `estudo/faixa_extrema_medidas.csv`, `estudo/faixa_extrema_por_janela.csv` | os limiares, as frequências agregadas e as frequências janela a janela da faixa extrema, **exportados pelo laboratório** por `robusta_ml.faixa_extrema` (ver `estudo/PROVENIENCIA_FAIXA_EXTREMA.md`) |
 | `estudo/setores_cortes.csv`, `estudo/setores_por_janela.csv` | os limiares do decil 0 e as frequências janela a janela dos 18 papéis da v4, com o setor, **exportados pelo laboratório** por `robusta_ml.setores_v4` (ver `estudo/PROVENIENCIA_SETORES.md`) |
 | `nucleo/` | cópia do que as telas usam do laboratório (ver *Proveniência do núcleo*) |
-| `saida/*.html` | as três páginas geradas |
+| `saida/*.html` | as quatro páginas geradas |
+| `graficos.py` | as páginas de gráficos da v3: para cada destaque, o retorno em 45 pregões por faixa de afastamento, nas nove janelas (leitura descritiva) |
 | `planilha_estudo.py` | monta a planilha de estudo da faixa extrema: a série linha a linha, com o treino e o teste de cada divisão |
 | `saida/dados/{TICKER}.xlsx` | uma planilha de estudo por papel visível na triagem |
 | `saida/dados/extremos_{TICKER}.xlsx` | uma planilha de estudo por papel em destaque na faixa extrema |
 | `saida/dados/setores_{TICKER}.xlsx` | uma planilha de estudo por papel em destaque na v4 |
 | `saida/setores_do_dia.csv` | o que a v4 exibe, linha a linha, incluindo os papéis no decil 0 que não viraram destaque |
+| `saida/graficos/{TICKER}.html` | uma página de gráficos por destaque da v3, aberta pela coluna "gráficos" |
 | `saida/estado.json` | ligação entre geradores: quantos papéis estão em destaque hoje na faixa extrema |
 | `saida/faixa_extrema_do_dia.csv` | o que a faixa extrema exibe, linha a linha, incluindo os papéis na faixa que não viraram destaque |
 
@@ -79,13 +81,14 @@ Ao mudar qualquer coisa em `robusta_ml/data.py`, `target.py`, `features_mma.py`,
 o commit de origem acima**. Nunca edite `nucleo/` diretamente: a correção se perderia na próxima
 recópia, e as duas versões divergiriam para sempre.
 
-## As três versões, e por que a segunda saiu do ar
+## As quatro versões, e por que a segunda saiu do ar
 
 | versão | página | situação |
 |---|---|---|
 | v1 — triagem por afastamento | `index.html` | mantida; página de entrada |
 | v2 — gatilhos de proteção | (retirada) | **descontinuada em 04/11/2026**; fica só o registro na página de método |
 | v3 — faixa extrema | `extremos.html` | vigente; publica um **indício**, com esse nome |
+| v4 — bancos e elétricas | `setores.html` | **em observação** desde 04/11/2026: acompanha uma hipótese travada, ao lado da v3 |
 
 Em 12/10/2026 um controle com **preços sem memória** (os retornos reais de cada papel reordenados,
 de modo que nada pode ser previsto) mostrou que a proteção por episódio da v2 já devolve de 75% a
@@ -103,6 +106,10 @@ pergunta, os parâmetros, o passo a passo e a receita de retorno (o código est�
 continuam em `versoes.py`, publicados na página de método.
 
 ### A v4 — bancos e elétricas, em observação
+
+Publicada em 04/11/2026 (commit `8436132`). Desde 05/11/2026 o usuário acompanha a eficácia e a
+usabilidade das telas no uso real. Ajustes de leitura entram como nota na versão, em `versoes.py`.
+A eficácia é julgada no laboratório, com as regras fixadas no `PLAN.md` de lá.
 
 Nasceu do teste por setor de 04/11/2026 no laboratório. Os setores, juntos, não diferiram mais do
 que o acaso, e nenhum dos 66 testes sobreviveu à correção. Mas os menores valores-p brutos ficaram
@@ -233,7 +240,7 @@ Confira, enquanto roda:
 
 Nas páginas abertas, confira:
 
-- **a barra de abas está formatada** nas três — abas espaçadas, com descritor embaixo do nome e
+- **a barra de abas está formatada** nas quatro — abas espaçadas, com descritor embaixo do nome e
   sublinhado na página atual. Se ela sair como links sublinhados grudados, falta o link para
   `estilo_componentes.css` em algum template (aconteceu em 07/09/2026);
 - **o contador ao lado de "Faixa extrema" concorda com os destaques** de `extremos.html`. Se

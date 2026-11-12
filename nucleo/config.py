@@ -99,6 +99,11 @@ ARQUIVO_FAIXA_MEDIDAS = "estudo/faixa_extrema_medidas.csv"
 # papel está no extremo hoje (pedido do usuário em 19/10/2026).
 ARQUIVO_FAIXA_POR_JANELA = "estudo/faixa_extrema_por_janela.csv"
 
+# Os gráficos por papel da v3 (`graficos.py`, pedido do usuário em 11/11/2026): as nove janelas da
+# v3 e o horizonte principal dela. Leitura descritiva, com as faixas da história inteira do papel.
+GRAFICOS_JANELAS = [5, 10, 20, 30, 45, 60, 90, 130, 200]
+GRAFICOS_HORIZONTE = 45
+
 # ============================================================================
 # v4 — BANCOS E ELÉTRICAS (`gerar_setores.py`) — hipótese em observação
 # ============================================================================

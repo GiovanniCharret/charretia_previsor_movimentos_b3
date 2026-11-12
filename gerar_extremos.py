@@ -35,6 +35,7 @@ from nucleo.faixas import add_dist_zscore                   # distância ÷ desv
 from math import ceil                                       # arredondamento do período
 from publicacao import barra_de_abas, copia_estatica, grava_estado   # o que as páginas dividem
 from planilha_estudo import grava_estudo_do_papel, link_planilha     # a planilha de estudo
+from graficos import grava_graficos, link_graficos                   # os gráficos por faixa
 
 # Colunas da tabela do dia, fixadas para a página saber desenhar o caso vazio.
 COLUNAS = ["ticker", "faixa", "janelas", "janelas_2_5", "janelas_5", "janelas_medidas",
@@ -293,8 +294,8 @@ def _pct(x):
     return "—" if pd.isna(x) else f"{100 * x:.1f}%"
 
 
-def _linha_html(r, planilhas=(), prefixo="extremos"):
-    """Uma linha da tabela; `prefixo` é o da planilha, para a v4 reaproveitar (helper)."""
+def _linha_html(r, planilhas=(), prefixo="extremos", graficos=None):
+    """Uma linha da tabela; `prefixo` é o da planilha e `graficos` liga a coluna da v3 (helper)."""
     # O link da planilha de estudo só aparece quando o arquivo foi de fato gravado.
     dados = (link_planilha(f"{prefixo}_{r['ticker']}.xlsx", r["ticker"])
              if r["ticker"] in planilhas else "<span class='posicao'>—</span>")
@@ -304,6 +305,10 @@ def _linha_html(r, planilhas=(), prefixo="extremos"):
     periodo = (f"<span class='posicao'>{str(r['inicio_medido'])[:4]}–{str(r['fim_medido'])[:4]}"
                f"</span> <span class='posicao'>({r['divisoes_usadas']})</span>"
                if r["inicio_medido"] else "<span class='posicao'>sem medida</span>")
+    # A coluna dos gráficos só existe quando a página a pede (a v3); só há link se a página foi gravada.
+    coluna_graficos = "" if graficos is None else (
+        f"<td class='esq'>{link_graficos(r['ticker'])}</td>" if r["ticker"] in graficos
+        else "<td class='esq'><span class='posicao'>—</span></td>")
     # O horizonte a que o limite inferior e a taxa-base da linha se referem.
     horizonte = "—" if pd.isna(r["horizonte"]) else f"<b>{int(r['horizonte'])}</b>"
     return (f"<tr>"
@@ -313,18 +318,21 @@ def _linha_html(r, planilhas=(), prefixo="extremos"):
             f"<td class='destaque'>{_pct(r['freq'])}</td>"
             f"<td>{_pct(r['taxa_base'])}</td>"
             f"<td class='esq'>{periodo}</td>"
+            f"{coluna_graficos}"
             f"<td class='esq'>{dados}</td>"
             f"</tr>")
 
 
-def _secao_html(titulo, nota, d, planilhas=(), prefixo="extremos"):
+def _secao_html(titulo, nota, d, planilhas=(), prefixo="extremos", graficos=None):
     """Uma seção da página, com a tabela ou o aviso de que está vazia; a v4 também a usa (helper)."""
     cabeca = f"<div class='secao'><h2>{titulo}</h2><span class='nota'>{nota}</span></div>"
     # Seção vazia diz isso com todas as letras: é o caso comum, e não pode parecer falha.
     if d.empty:
         return cabeca + ("<div class='quadro'><table><tbody><tr><td class='esq'>"
                          "<span class='posicao'>nenhum destaque hoje</span></td></tr></tbody></table></div>")
-    linhas = "".join(_linha_html(r, planilhas, prefixo) for _, r in d.iterrows())
+    linhas = "".join(_linha_html(r, planilhas, prefixo, graficos) for _, r in d.iterrows())
+    # O cabeçalho dos gráficos acompanha a coluna, antes de "dados".
+    th_graficos = "" if graficos is None else "<th class='esq'>gráficos</th>"
     return (cabeca + "<div class='quadro'><table><thead><tr>"
             "<th class='esq'>papel</th>"
             "<th class='esq'>janela <span class='sub2'>(faixa de janelas)</span></th>"
@@ -332,18 +340,20 @@ def _secao_html(titulo, nota, d, planilhas=(), prefixo="extremos"):
             "<th>frequência</th>"
             "<th>taxa-base</th>"
             "<th class='esq'>período medido <span class='sub2'>(épocas)</span></th>"
+            f"{th_graficos}"
             "<th class='esq'>dados</th>"
             f"</tr></thead><tbody>{linhas}</tbody></table></div>")
 
 
-def monta_pagina(template, tabela, data_pregao, n_papeis, n_alerta=None, planilhas=()):
+def monta_pagina(template, tabela, data_pregao, n_papeis, n_alerta=None, planilhas=(), graficos=()):
     """
     Preenche o template: a barra de abas, o resumo do dia e as duas seções.
 
     Por que existe: separa a renderização do cálculo, para os testes cobrirem a página sem rede.
 
     Entrada: template (string com os marcadores), tabela (saída de `monta_tabela`), data_pregao,
-    n_papeis (quantos foram verificados), n_alerta (contador de destaques da aba; None se não medido).
+    n_papeis (quantos foram verificados), n_alerta (contador de destaques da aba; None se não medido),
+    planilhas e graficos (os papéis cujo arquivo foi gravado; sem arquivo, a célula mostra "—").
     Fase 1: separar os destaques (frequência acima da taxa-base) e montar o resumo do dia.
     Fase 2: as duas seções, a de 2,5% primeiro.
     Fase 3: os marcadores.
@@ -374,10 +384,10 @@ def monta_pagina(template, tabela, data_pregao, n_papeis, n_alerta=None, planilh
     # Fase 2: as duas seções.
     corpo = (_secao_html("Abaixo do percentil de 2,5%",
                          "os 2,5% de dias mais afastados para baixo da média, na história do papel",
-                         d25, planilhas)
+                         d25, planilhas, graficos=graficos)
              + _secao_html("Abaixo do percentil de 5%",
                            "não chegam ao corte de 2,5% em nenhuma janela, mas passam do de 5%", d5,
-                           planilhas))
+                           planilhas, graficos=graficos))
     # Fase 3: os marcadores. A barra vem de `publicacao` para ser igual em todas as páginas.
     for marca, valor in (("ABAS", barra_de_abas("extremos", n_alerta)), ("TITULO", titulo),
                          ("SELO", selo), ("NOTA", nota), ("CORPO", corpo),
@@ -449,16 +459,19 @@ def main() -> None:
     saida.mkdir(parents=True, exist_ok=True)
     # Uma planilha de estudo por DESTAQUE: uma aba para cada média em que o papel está no extremo
     # hoje, no percentil da faixa dele e no horizonte da linha.
-    planilhas = set()
+    planilhas, graficos = set(), set()
     for _, r in tabela[tabela["acima_da_base"].astype(bool)].iterrows() if len(tabela) else []:
         t = r["ticker"]
         no_extremo = janelas_no_extremo(escores_do_dia[t], cortes[cortes["ticker"] == t], r["faixa"])
         if grava_estudo_do_papel(saida / "dados", f"extremos_{t}.xlsx", t, no_extremo,
                                  r["horizonte"], float(r["faixa"])):
             planilhas.add(t)
+        # A página de gráficos do destaque, aberta na primeira janela que o pôs na tabela.
+        if grava_graficos(saida / "graficos", t, data_pregao, no_extremo):
+            graficos.add(t)
     html = monta_pagina((raiz / "template_extremos.html").read_text(encoding="utf-8"), tabela,
                         data_pregao, len(papeis), destaques,
-                        planilhas)
+                        planilhas, graficos)
     (saida / "extremos.html").write_text(html, encoding="utf-8", newline="\n")
     copia_estatica(raiz, saida)
     tabela.to_csv(saida / "faixa_extrema_do_dia.csv", index=False, lineterminator="\n")

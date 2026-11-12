@@ -10,11 +10,11 @@ O repositório é escrito em português (código, docstrings, comentários, comm
 python -m venv .venv; .venv\Scripts\activate
 pip install -r requirements.txt pytest
 
-python -m pytest -q                        # os 104 testes (offline, preços sintéticos, segundos)
+python -m pytest -q                        # os 113 testes (offline, preços sintéticos, segundos)
 python -m pytest tests/test_gerar_tela.py::TestClassificaEvidencia -q     # uma classe
 python -m pytest -q -k "regua"                                            # um teste por nome
 
-# As três páginas, NESTA ORDEM (gerar_extremos grava o estado que as outras duas leem):
+# As quatro páginas, NESTA ORDEM (gerar_extremos grava o estado que as outras leem):
 python gerar_extremos.py                   # tela da faixa extrema (v3), 100 downloads
 python gerar_setores.py                    # bancos e elétricas (v4), 18 downloads
 python gerar_tela.py                       # tela de triagem, 100 downloads
@@ -36,7 +36,7 @@ só os dois primeiros geradores baixam.
 | `gerar_setores.py` | `setores.html` — bancos e elétricas (v4, em observação) | `estudo/setores_*.csv` + downloads |
 | `gerar_metodo.py` | `metodo.html` — método | `versoes.py`, **sem rede** |
 
-`publicacao.py` carrega o que os três dividem: a barra de abas (`barra_de_abas`), a cópia dos
+`publicacao.py` carrega o que os quatro dividem: a barra de abas (`barra_de_abas`), a cópia dos
 estilos para a pasta publicada (`copia_estatica`) e o estado do dia (`grava_estado`/`le_estado`).
 
 Duas regras que não são óbvias e o código sustenta:
@@ -108,7 +108,22 @@ indício medido **por dia** nos percentis de 2,5% e 5%. Regras que não devem se
   `faixa_extrema_por_janela.csv`, exportados por `robusta_ml.faixa_extrema`. A tela não recalcula
   corte nem frequência, e **falha de propósito** se um dos três faltar.
 
+### Os gráficos da v3 (11/11/2026)
+
+`graficos.py` grava `saida/graficos/{TICKER}.html` para cada destaque da v3, com link na coluna
+"gráficos", antes de "dados" (pedido do usuário). `resumo_por_faixa` é pura: para cada uma das
+nove janelas, as doze faixas (0–2,5%, 2,5–5%, 5–10% e os decis 1 a 9, com bordas da **história
+inteira** do papel), os quantis 10, 25, 50, 75 e 90 do retorno em 45 pregões, a fração sem perda e
+a faixa de hoje. A página desenha as caixas no navegador, sem biblioteca externa, e abre na
+primeira janela que pôs o papel na tabela. **É leitura descritiva** e a página diz isso; os números
+que decidem os destaques continuam vindo do laboratório. A coluna só existe na v3: o parâmetro
+`graficos` de `_secao_html` e `_linha_html` fica `None` na v4.
+
 ### Bancos e elétricas (v4) — em observação
+
+**Em acompanhamento desde 05/11/2026.** O usuário observa a eficácia e a usabilidade da v3 e da v4
+no uso real. Pedidos de usabilidade viram **nota** na versão em `versoes.py`. Mudança de modelo só
+acontece depois que o laboratório julgar os dados de eficácia.
 
 Nasceu do teste por setor do laboratório (04/11/2026): o decil 0, em 45 pregões, teve os menores
 valores-p nas elétricas e nos bancos, sem sobreviver à correção pelos 66 testes. É **hipótese em
@@ -158,15 +173,15 @@ São três templates, um por página. `template.html` tem onze marcadores `{{...
 constante `MARCADORES`. Ao acrescentar ou renomear um, atualize os três lugares: o template,
 `MARCADORES` e o dict `valores` em `monta_pagina`. Os quatro rótulos que `classifica_evidencia`
 emite precisam aparecer na legenda do template — há teste que verifica isso, e teste que garante que
-nenhum marcador sobra em nenhuma das três páginas.
+nenhum marcador sobra em nenhuma das quatro páginas.
 
 **O estilo é externo.** Os 237 selos de `estilo.css` saíram do bloco `<style>` de `template.html` em
 07/09/2026: com três páginas, mantê-lo embutido significaria três cópias que divergem na primeira
 mudança de cor. `estilo_componentes.css` traz os componentes que as páginas acrescentaram — a
-começar pela **barra de abas, que as três exibem** — e não redefine cor, fonte ou medida nenhuma:
+começar pela **barra de abas, que as quatro exibem** — e não redefine cor, fonte ou medida nenhuma:
 todas vêm das variáveis de `estilo.css`.
 
-⚠️ **As três páginas linkam OS DOIS.** O arquivo chamava-se `estilo_alertas.css` até 07/09/2026, e o
+⚠️ **As quatro páginas linkam OS DOIS.** O arquivo chamava-se `estilo_alertas.css` até 07/09/2026, e o
 nome enganou: o `template.html` foi publicado sem o link e a barra da página inicial saiu como links
 sublinhados grudados. O teste que existia verificava só uma direção — que todo estilo linkado é
 copiado — e passava. Agora há também o inverso: **todo estilo declarado precisa estar linkado em
@@ -174,7 +189,7 @@ todo template**, e as classes que `barra_de_abas` emite precisam ter regra em al
 
 ### `saida/` e a publicação
 
-O artefato publicado é a pasta `saida/` **inteira**: as três páginas, os dois estilos, o
+O artefato publicado é a pasta `saida/` **inteira**: as quatro páginas, os dois estilos, o
 `estado.json` e as planilhas em `dados/`, para onde os botões de download apontam por caminho
 relativo. `saida/` não é versionada; é regerada a cada execução. **`estudo/` é o oposto**: vem do
 laboratório, é versionada, e sem ela `gerar_extremos.py` não roda.
@@ -202,7 +217,7 @@ reexporte.
 
 ## Os testes que não pertencem a nenhum gerador
 
-`tests/test_site.py` cobre propriedades que **nenhum gerador sozinho garante**: as três páginas se
+`tests/test_site.py` cobre propriedades que **nenhum gerador sozinho garante**: as quatro páginas se
 alcançam, nenhuma aponta para a tela descontinuada, exibem o mesmo contador, não deixam marcador de template escapar, e todo estilo declarado
 está linkado em todo template.
 
