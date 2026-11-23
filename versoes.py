@@ -185,6 +185,11 @@ VERSOES = [
                            "(os decis, com o primeiro aberto em 0–2,5%, 2,5–5% e 5–10%), uma janela "
                            "por vez, com a faixa de hoje destacada. É leitura descritiva, com a "
                            "história inteira do papel."),
+            ("23/11/2026", "A coluna <b>gráficos</b> saiu, a pedido do usuário: as páginas traziam "
+                           "detalhe demais (dias e não episódios, o que contradizia a leitura da "
+                           "tabela) e gastavam processamento — cerca de 6 megabytes e um download "
+                           "da história completa por destaque, todo dia. O código fica no commit "
+                           "<code>ce5ae70</code>."),
         ],
         "receita": None,
     },
@@ -340,7 +345,12 @@ VERSOES = [
             "escolhidos antes do achado N, peneira de qualidade global, e uma única divisão entre "
             "treino e teste em vez de cinco.",
         ],
-        "notas": [],
+        "notas": [
+            ("23/11/2026", "Saiu o painel <b>Detalhamento por papel</b>, a pedido do usuário: era "
+                           "ruído. A página ficou só com a leitura do índice, e o gerador passou a "
+                           "baixar apenas o BOVA11. A leitura papel a papel está na faixa extrema "
+                           "(v3)."),
+        ],
         # A receita de retorno só existe para versões que não estão em produção — para a vigente,
         # "como voltar" não faz sentido.
         "receita": "<b>1.</b> Restaure os parâmetros do quadro acima em <code>nucleo/config.py</code>.\n"

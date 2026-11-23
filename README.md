@@ -24,7 +24,7 @@ mede nada novo, apenas se aplica o que já foi medido e validado fora da amostra
 
 | arquivo | papel |
 |---|---|
-| `gerar_tela.py` | gerador da **triagem**: baixa, peneira, calcula o estado de hoje, grava a página e as planilhas |
+| `gerar_tela.py` | gerador da **triagem**: baixa o BOVA11, peneira, calcula o estado de hoje, grava a página e a planilha do índice |
 | `gerar_extremos.py` | gerador da **faixa extrema**: mostra em quais das nove médias o papel está abaixo do percentil de 2,5% ou de 5%, com a frequência dessas médias |
 | `gerar_setores.py` | gerador de **bancos e elétricas** (v4): reaproveita as funções da v3 com o corte do decil 0 e uma seção por setor |
 | `gerar_metodo.py` | gerador do **método**: não toca a rede, monta a página a partir de `versoes.py` |
@@ -37,13 +37,11 @@ mede nada novo, apenas se aplica o que já foi medido e validado fora da amostra
 | `estudo/setores_cortes.csv`, `estudo/setores_por_janela.csv` | os limiares do decil 0 e as frequências janela a janela dos 18 papéis da v4, com o setor, **exportados pelo laboratório** por `robusta_ml.setores_v4` (ver `estudo/PROVENIENCIA_SETORES.md`) |
 | `nucleo/` | cópia do que as telas usam do laboratório (ver *Proveniência do núcleo*) |
 | `saida/*.html` | as quatro páginas geradas |
-| `graficos.py` | as páginas de gráficos da v3: para cada destaque, o retorno em 45 pregões por faixa de afastamento, nas nove janelas (leitura descritiva) |
 | `planilha_estudo.py` | monta a planilha de estudo da faixa extrema: a série linha a linha, com o treino e o teste de cada divisão |
 | `saida/dados/{TICKER}.xlsx` | uma planilha de estudo por papel visível na triagem |
 | `saida/dados/extremos_{TICKER}.xlsx` | uma planilha de estudo por papel em destaque na faixa extrema |
 | `saida/dados/setores_{TICKER}.xlsx` | uma planilha de estudo por papel em destaque na v4 |
 | `saida/setores_do_dia.csv` | o que a v4 exibe, linha a linha, incluindo os papéis no decil 0 que não viraram destaque |
-| `saida/graficos/{TICKER}.html` | uma página de gráficos por destaque da v3, aberta pela coluna "gráficos" |
 | `saida/estado.json` | ligação entre geradores: quantos papéis estão em destaque hoje na faixa extrema |
 | `saida/faixa_extrema_do_dia.csv` | o que a faixa extrema exibe, linha a linha, incluindo os papéis na faixa que não viraram destaque |
 
@@ -52,9 +50,8 @@ de onde as outras duas tiram o contador da barra de abas. Invertida a ordem, o s
 contador do dia anterior — ou sem contador nenhum na primeira execução.
 
 **O artefato publicado é a pasta `saida/` inteira**, não só o `index.html`: os botões de download
-apontam para `dados/` por caminho relativo e quebram se a pasta não subir junto. São 7 arquivos e
-cerca de 2 megabytes — a página, mais uma planilha por papel exibido (`DIST_TOP_N`, hoje 5) e uma
-do índice. `saida/` é gerada a cada execução e **não é versionada**.
+apontam para `dados/` por caminho relativo e quebram se a pasta não subir junto. Vão as páginas, as
+planilhas de estudo (a do índice e as dos destaques da faixa extrema). `saida/` é gerada a cada execução e **não é versionada**.
 
 ## Proveniência do núcleo — leia antes de mexer
 
@@ -144,23 +141,9 @@ de retorno. É o que torna um retorno a uma versão anterior possível sem arque
 Recalibrações entram como nota na versão vigente. Sem esse critério, cada nova varredura viraria
 uma versão e o registro perde a serventia em poucos meses.
 
-## Quais papéis a tabela mostra
+## O que vai na planilha de estudo do índice
 
-Os `DIST_TOP_N` primeiros (hoje 5), ordenados pela **posição no decil** — mais afastado para baixo
-primeiro. Empate no decil é desfeito pela **força da evidência** (forte, moderada, fraca, e os dois
-rótulos de alerta por último, porque são anti-sinais); empate nisso também, pelo maior excesso.
-
-A lista completa dos aprovados não vai para a tela de propósito: 41 linhas poluem a leitura e,
-pior, sugerem 41 oportunidades independentes — exatamente o erro que a página existe para evitar,
-já que o efeito é de mercado inteiro.
-
-**Só os papéis exibidos geram planilha.** A mesma função (`seleciona_destaques`) decide quem
-aparece na tabela e quem vira arquivo, então a página nunca oferece download de arquivo inexistente
-nem o pacote leva arquivo que ninguém alcança.
-
-## O que vai nas planilhas de estudo
-
-Cada uma cobre todos os pregões com escore válido, com as colunas `Close`, `mma_w90`,
+Ela cobre todos os pregões com escore válido, com as colunas `Close`, `mma_w90`,
 `mma_dist_w90`, `mma_dist_z_w90`, `ret_45d`, `faixa` (o decil) e **`conjunto`**.
 
 A última é a que importa: ela marca cada linha como `treino`, `embargo`, `teste` ou `sem_retorno`,
@@ -205,7 +188,7 @@ python -m pytest -q
 #    São os mesmos comandos que o GitHub Actions roda.
 python gerar_extremos.py    # 100 papéis, ~1 minuto
 python gerar_setores.py     # 18 papéis, segundos
-python gerar_tela.py        # 100 papéis, ~1 minuto
+python gerar_tela.py        # só o BOVA11, segundos
 python gerar_metodo.py      # sem rede, instantâneo
 
 # 3. Abrir e conferir
@@ -221,22 +204,15 @@ afirmaria que não houve destaque, o que é diferente de não saber.
 Os geradores que baixam mostram uma barra de andamento com o placar ao lado. Não há resumo no fim —
 a barra já carrega os totais.
 
-**`gerar_tela.py`** anuncia uma linha por papel, no momento em que ele é decidido:
+**`gerar_tela.py`** baixa só o índice e anuncia uma linha:
 
 ```
-  ok  RENT3    decil 0  +11,0 pp
-  fora WEGE3    preço parado em 29% dos dias (máximo 15%)
+  ok  BOVA11   decil 1  +0,7 pp
 ```
 
-Confira, enquanto roda:
-
-- **o BOVA11 tem de sair como `ok`.** Se ele for reprovado, o gerador para com erro. É proposital:
-  sem a leitura mestra a tela perde o enquadramento e viraria uma lista de sinais soltos.
-- **o placar final da barra** — hoje `ok 42 | fora 28`. Uma queda brusca nos aprovados costuma
-  indicar problema na fonte de dados, não no mercado.
-- **motivos de reprovação** — vêm por extenso em cada linha `fora`. Um papel novo reprovando por
-  "treino insuficiente" é esperado; um papel antigo reprovando por "volatilidade impossível"
-  significa que a série ganhou um desdobramento não ajustado e precisa ser investigada.
+**O BOVA11 tem de sair como `ok`.** Se ele for reprovado, o gerador para com erro, com o motivo por
+extenso. É proposital: sem a leitura mestra a página não existe. Até 23/11/2026 a triagem baixava os
+100 papéis para uma tabela de detalhamento, retirada a pedido do usuário.
 
 Nas páginas abertas, confira:
 

@@ -34,8 +34,8 @@ concurrency:
 jobs:
   publicar:
     runs-on: ubuntu-latest
-    # São dois conjuntos de downloads (100 papéis para a faixa extrema e 100 para a triagem):
-    # 3 a 6 minutos no total. A folga cobre lentidão da fonte sem travar a fila.
+    # Os downloads são os 100 papéis da faixa extrema, os 18 da v4 e o BOVA11 da triagem, mais a
+    # história completa dos destaques para as planilhas: alguns minutos no total. A folga cobre lentidão da fonte sem travar a fila.
     timeout-minutes: 30
     environment:
       name: github-pages

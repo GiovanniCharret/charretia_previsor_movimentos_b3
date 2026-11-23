@@ -51,42 +51,17 @@
 <div class="tese">
   <div class="n">1</div>
   <div class="txt">
-    <h2>Os papéis abaixo não são apostas independentes</h2>
+    <h2>O índice vem antes dos papéis</h2>
     <p>O efeito medido existe no <b>próprio índice</b>: quando o mercado brasileiro cai muito abaixo
-    da sua média, ele tende a voltar. Todo papel herda esse movimento.</p>
+    da sua média, ele tende a voltar. Todo papel herda esse movimento, então os papéis não são apostas
+    independentes — a leitura papel a papel está na faixa extrema.</p>
   </div>
 </div>
 
-<!-- ===== detalhamento por papel ===== -->
-<div class="secao">
-  <h2>Detalhamento por papel</h2>
-  <span class="nota">Só o lado comprado. A cauda alta não sustenta venda.</span>
-</div>
-
-<div class="quadro">
-  <table>
-    <thead>
-      <tr>
-        <th class="esq">papel</th>
-        <th class="esq">posição no decil</th>
-        <th>dist. à média</th>
-        <th>hist. do decil</th>
-        <th>taxa-base</th>
-        <th>excesso</th>
-        <th>freq. +</th>
-        <th>episódios</th>
-        <th class="esq">evidência</th>
-        <th class="esq">dados</th>
-      </tr>
-    </thead>
-    <tbody>{{LINHAS}}</tbody>
-  </table>
-</div>
-<p class="dica-rolagem">→ role a tabela para o lado para chegar à coluna <b>dados</b>.</p>
-<!-- ===== como ler as colunas ===== -->
+<!-- ===== como ler as medidas ===== -->
 <section class="glossario">
  <div class="leitura">
-  <h2>Como ler cada coluna</h2>
+  <h2>Como ler cada medida</h2>
   <dl>
     <div class="verbete">
       <dt>posição no decil</dt>
@@ -126,45 +101,11 @@
     </div>
     <div class="verbete">
       <dt>episódios</dt>
-      <dd>Quantos eventos <b>independentes</b> sustentam a linha — e é o número mais importante da
-      tabela. Uma crise que joga o papel para a faixa 0 durante 30 pregões seguidos não são 30
-      observações: é <b>uma</b>. Dias contíguos são agrupados num só episódio. Por isso uma linha
+      <dd>Quantos eventos <b>independentes</b> sustentam a leitura — e é o número mais importante da
+      página. Uma crise que joga o papel para a faixa 0 durante 30 pregões seguidos não são 30
+      observações: é <b>uma</b>. Dias contíguos são agrupados num só episódio. Por isso uma leitura
       pode ter 120 dias de amostra e apenas 7 episódios. <b class="cuidado">Abaixo de 5 episódios,
-      trate a linha como ilustração, não como evidência.</b></dd>
-    </div>
-    <div class="verbete">
-      <dt>evidência</dt>
-      <dd>Resumo da <b>força do histórico</b>, não do tamanho do retorno — um papel pode ter
-      retorno alto e evidência fraca. Estes são os seis rótulos possíveis, e a regra que produz
-      cada um. Os dois de alerta são verificados <b>antes</b> de qualquer contagem de episódios:
-      são armadilhas, e esconder uma delas atrás de um rótulo elogioso seria o pior erro da tela.
-      <span class="escala">
-        <span class="chip c-alerta">bate a base, mas perde</span> na zona, o excesso é positivo mas
-        o retorno absoluto é negativo. O papel rendeu mais que a <em>própria</em> média e ainda
-        assim perdeu dinheiro — render menos mal não é ganhar.
-      </span>
-      <span class="escala">
-        <span class="chip c-alerta">contradiz o padrão</span> na zona, o excesso é negativo. Neste
-        papel, estar muito abaixo da média foi historicamente <em>pior</em> que um dia qualquer —
-        o oposto do que a tela procura.
-      </span>
-      <span class="escala">
-        <span class="chip c-fraca">fora da zona</span> o papel não está nos decis 0 a 2. Não há
-        viés a reportar, por melhor que o histórico dele pareça.
-      </span>
-      <span class="escala">
-        <span class="chip c-forte">forte</span> na zona, sem armadilha, mais de 15 episódios
-        independentes.
-      </span>
-      <span class="escala">
-        <span class="chip c-moderada">moderada</span> na zona, sem armadilha, de 5 a 15 episódios.
-      </span>
-      <span class="escala">
-        <span class="chip c-fraca">fraca</span> na zona, sem armadilha, menos de 5 episódios.
-        Ilustração, não evidência.
-      </span>
-      O degrau “forte” existe para o dia em que algum papel alcançar: passar de 15 episódios
-      independentes em cinco anos é raro, e na prática a tela raramente o exibe.</dd>
+      trate a leitura como ilustração, não como evidência.</b></dd>
     </div>
   </dl>
  </div>

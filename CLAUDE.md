@@ -10,14 +10,14 @@ O repositório é escrito em português (código, docstrings, comentários, comm
 python -m venv .venv; .venv\Scripts\activate
 pip install -r requirements.txt pytest
 
-python -m pytest -q                        # os 113 testes (offline, preços sintéticos, segundos)
-python -m pytest tests/test_gerar_tela.py::TestClassificaEvidencia -q     # uma classe
+python -m pytest -q                        # os 92 testes (offline, preços sintéticos, segundos)
+python -m pytest tests/test_gerar_setores.py::TestTabela -q              # uma classe
 python -m pytest -q -k "regua"                                            # um teste por nome
 
 # As quatro páginas, NESTA ORDEM (gerar_extremos grava o estado que as outras leem):
 python gerar_extremos.py                   # tela da faixa extrema (v3), 100 downloads
 python gerar_setores.py                    # bancos e elétricas (v4), 18 downloads
-python gerar_tela.py                       # tela de triagem, 100 downloads
+python gerar_tela.py                       # tela de triagem, só o BOVA11
 python gerar_metodo.py                     # página de método, sem rede
 start saida\index.html
 ```
@@ -31,7 +31,7 @@ só os dois primeiros geradores baixam.
 
 | gerador | página | fonte dos dados |
 |---|---|---|
-| `gerar_tela.py` | `index.html` — triagem | `lista_tickers_liquidos.xlsx` + downloads |
+| `gerar_tela.py` | `index.html` — triagem | download do BOVA11 |
 | `gerar_extremos.py` | `extremos.html` — faixa extrema (v3, a vigente) | `estudo/faixa_extrema_*.csv` + downloads |
 | `gerar_setores.py` | `setores.html` — bancos e elétricas (v4, em observação) | `estudo/setores_*.csv` + downloads |
 | `gerar_metodo.py` | `metodo.html` — método | `versoes.py`, **sem rede** |
@@ -51,26 +51,24 @@ Duas regras que não são óbvias e o código sustenta:
 
 ### A triagem (v1)
 
-Pipeline de um comando só (`gerar_tela.py: main()`): lê `lista_tickers_liquidos.xlsx` (coluna
-`ticker`, 100 papéis; cópia da lista do laboratório) → baixa cada papel
+Pipeline de um comando só (`gerar_tela.py: main()`): baixa **só o BOVA11**
 (`nucleo.data.load_prices`, único ponto de rede) → peneira de qualidade
-(`nucleo.qualidade_dados.avalia_qualidade`) → `estado_de_hoje()` por aprovado →
-`monta_pagina()` preenche `template.html` → grava `saida/index.html` e `saida/dados/{TICKER}.xlsx`.
+(`nucleo.qualidade_dados.avalia_qualidade`; reprovado, encerra com erro) → `estado_de_hoje()` →
+`monta_pagina(indice, template)` preenche `template.html` → grava `saida/index.html` e
+`saida/dados/BOVA11.xlsx`.
 
-Três invariantes que o código sustenta de propósito:
+**Desde 23/11/2026 não há tabela de papéis** (pedido do usuário: o painel "Detalhamento por papel"
+era ruído). Com ela saíram `seleciona_destaques`, `classifica_evidencia`, `FORCA_EVIDENCIA`,
+`_mini_regua`, o marcador `LINHAS`, o verbete "evidência" do glossário e `DIST_TOP_N`. A leitura
+papel a papel vive na faixa extrema (v3). Não recrie a tabela sem pedido.
+
+O invariante que o código sustenta de propósito:
 
 - **`estado_de_hoje` calibra e lê em conjuntos diferentes.** Os cortes de decil saem só do treino
   (`quantis_do_treino`), a estatística histórica sai só do teste, e o decil exibido vem da última
   linha da série completa — inclusive as linhas sem retorno futuro. Ler o decil na tabela filtrada
   por `dropna()` mostraria a posição de `DIST_HORIZONTE` pregões atrás, erro silencioso e grave.
-- **`seleciona_destaques` é a única fonte de verdade sobre quais papéis existem na tela.** A tabela
-  HTML e a gravação das planilhas chamam a mesma função; separá-las produziria link para arquivo
-  inexistente ou arquivo sem link.
-- **`classifica_evidencia` é o único lugar que emite juízo.** Armadilhas primeiro (excesso positivo
-  com retorno negativo; excesso negativo dentro da zona), depois "fora da zona", depois a escala por
-  episódios independentes. Mudar a ordem esconde justamente os casos que mais enganam.
-
-`ZONA = (0, 1, 2)` (decis de viés observado) e `FORCA_EVIDENCIA` vivem no topo de `gerar_tela.py`;
+`ZONA = (0, 1, 2)` (decis de viés observado) vive no topo de `gerar_tela.py`;
 os parâmetros do estudo vivem em `nucleo/config.py`, em dois blocos — um por versão da tela.
 
 ### Os gatilhos (v2) — descontinuada em 04/11/2026
@@ -108,16 +106,13 @@ indício medido **por dia** nos percentis de 2,5% e 5%. Regras que não devem se
   `faixa_extrema_por_janela.csv`, exportados por `robusta_ml.faixa_extrema`. A tela não recalcula
   corte nem frequência, e **falha de propósito** se um dos três faltar.
 
-### Os gráficos da v3 (11/11/2026)
+### Os gráficos da v3 — retirados (23/11/2026)
 
-`graficos.py` grava `saida/graficos/{TICKER}.html` para cada destaque da v3, com link na coluna
-"gráficos", antes de "dados" (pedido do usuário). `resumo_por_faixa` é pura: para cada uma das
-nove janelas, as doze faixas (0–2,5%, 2,5–5%, 5–10% e os decis 1 a 9, com bordas da **história
-inteira** do papel), os quantis 10, 25, 50, 75 e 90 do retorno em 45 pregões, a fração sem perda e
-a faixa de hoje. A página desenha as caixas no navegador, sem biblioteca externa, e abre na
-primeira janela que pôs o papel na tabela. **É leitura descritiva** e a página diz isso; os números
-que decidem os destaques continuam vindo do laboratório. A coluna só existe na v3: o parâmetro
-`graficos` de `_secao_html` e `_linha_html` fica `None` na v4.
+Entre 11 e 23/11/2026 a tabela da v3 teve uma coluna "gráficos", com uma página por destaque (o
+retorno em 45 pregões por faixa de afastamento). O usuário a retirou: detalhe demais, contado em
+dias e não em episódios, e processamento diário sem retorno. O código fica no commit `ce5ae70`.
+**Não recrie sem pedido.** O parâmetro `prefixo` de `_secao_html` e `_linha_html` continua, porque
+a v4 o usa.
 
 ### Bancos e elétricas (v4) — em observação
 
@@ -169,11 +164,10 @@ gerador absorve e segue.
 
 ### Template
 
-São três templates, um por página. `template.html` tem onze marcadores `{{...}}`, listados na
+São quatro templates, um por página. `template.html` tem dez marcadores `{{...}}`, listados na
 constante `MARCADORES`. Ao acrescentar ou renomear um, atualize os três lugares: o template,
-`MARCADORES` e o dict `valores` em `monta_pagina`. Os quatro rótulos que `classifica_evidencia`
-emite precisam aparecer na legenda do template — há teste que verifica isso, e teste que garante que
-nenhum marcador sobra em nenhuma das quatro páginas.
+`MARCADORES` e o dict `valores` em `monta_pagina`. Há teste que garante que nenhum marcador sobra em
+nenhuma das quatro páginas.
 
 **O estilo é externo.** Os 237 selos de `estilo.css` saíram do bloco `<style>` de `template.html` em
 07/09/2026: com três páginas, mantê-lo embutido significaria três cópias que divergem na primeira

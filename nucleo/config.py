@@ -39,14 +39,9 @@ DIST_JANELA = 90
 # independentes: em 90 dias o efeito é maior, mas sobram poucos episódios para sustentá-lo.
 DIST_HORIZONTE = 45
 
-# Papel tratado como LEITURA MESTRA. O efeito medido é de mercado inteiro, então o índice vem antes
-# dos papéis individuais — que são detalhamento dele, não apostas independentes.
+# Papel tratado como LEITURA MESTRA, e desde 23/11/2026 o único da página: a tabela de detalhamento
+# por papel (e com ela `DIST_TOP_N`) saiu a pedido do usuário. O efeito medido é de mercado inteiro.
 DIST_INDICE = "BOVA11"
-
-# Quantos papéis a tabela exibe. Uma tabela com os 41 aprovados polui a leitura e sugere 41
-# oportunidades independentes, que é justamente o erro que a página tenta evitar. Ordenados por
-# decil, desempate pela força da evidência.
-DIST_TOP_N = 5
 
 # Janela do desvio-padrão móvel que normaliza a distância (z = distância / desvio móvel).
 # 252 ≈ um ano de pregão. Só usa passado, então não vaza futuro.
@@ -98,11 +93,6 @@ ARQUIVO_FAIXA_MEDIDAS = "estudo/faixa_extrema_medidas.csv"
 # A mesma medida janela a janela. É dela que sai a frequência da linha: a média das janelas em que o
 # papel está no extremo hoje (pedido do usuário em 19/10/2026).
 ARQUIVO_FAIXA_POR_JANELA = "estudo/faixa_extrema_por_janela.csv"
-
-# Os gráficos por papel da v3 (`graficos.py`, pedido do usuário em 11/11/2026): as nove janelas da
-# v3 e o horizonte principal dela. Leitura descritiva, com as faixas da história inteira do papel.
-GRAFICOS_JANELAS = [5, 10, 20, 30, 45, 60, 90, 130, 200]
-GRAFICOS_HORIZONTE = 45
 
 # ============================================================================
 # v4 — BANCOS E ELÉTRICAS (`gerar_setores.py`) — hipótese em observação

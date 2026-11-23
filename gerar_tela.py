@@ -7,12 +7,11 @@ diferentes, e por isso vivem em repositórios separados — aqui não se mede na
 aplica o que já foi medido e validado fora da amostra.
 
 O que a tela mostra, e por quê:
-  - **O índice primeiro.** O efeito medido é de mercado inteiro (aparece no próprio BOVA11), então
-    os papéis individuais são detalhamento dele, não apostas independentes.
-  - **Só o lado comprado.** O decil alto rende abaixo da média do próprio papel, mas só é negativo
-    em termos absolutos em cerca de metade dos casos. Render menos que a própria média não é cair.
-  - **Evidência ao lado do sinal.** Número de episódios independentes, frequência de acerto e a
-    taxa-base do papel aparecem em toda linha. Sinal sem a força da evidência engana.
+  - **Só o índice.** O efeito medido é de mercado inteiro (aparece no próprio BOVA11). Até
+    23/11/2026 havia também uma tabela de detalhamento por papel; o usuário a retirou por ser
+    ruído, e a leitura por papel vive na faixa extrema (v3). Por isso só o índice é baixado.
+  - **Evidência ao lado do sinal.** Episódios independentes, frequência de acerto e a taxa-base
+    aparecem junto do decil de hoje. Sinal sem a força da evidência engana.
 
 Disciplina mantida do estudo: cortes de decil calculados só no treino, desvio-padrão móvel causal,
 embargo igual ao horizonte, e peneira de qualidade de dados antes de qualquer cálculo.
@@ -23,7 +22,6 @@ from pathlib import Path                                    # caminhos
 import sys                                                  # fluxo de saída único para a barra
 import numpy as np                                          # medidas
 import pandas as pd                                         # séries e datas
-from tqdm import tqdm                                       # barra de andamento dos ~70 downloads
 
 from nucleo import config                                   # parâmetros do estudo
 from publicacao import (barra_de_abas, copia_estatica,      # o que as 3 páginas dividem
@@ -38,7 +36,7 @@ from nucleo.faixas import (add_dist_zscore, quantis_do_treino, atribui_faixa,
 # Marcadores que o template espera. Existe como constante para o teste poder garantir que nenhum
 # sobrou na página final — marcador não substituído é bug visível para quem lê.
 MARCADORES = ["TITULO_INDICE", "SUB_INDICE", "VEREDITO", "CLASSE_VEREDITO",
-              "REGUA", "MEDIDAS", "LINHAS", "BAIXAR_INDICE", "CARIMBO",
+              "REGUA", "MEDIDAS", "BAIXAR_INDICE", "CARIMBO",
               # Os dois últimos vieram com a segunda tela (07/09/2026): a barra de navegação, que
               # `publicacao.barra_de_abas` monta igual para as três páginas, e a frase de rodapé que
               # leva à tela de gatilhos — sem ela, a segunda página depende de o visitante reparar
@@ -53,47 +51,6 @@ FUSO_BRASILIA = timezone(timedelta(hours=-3))
 
 # Decis considerados "zona de viés observado" (os três mais afastados para baixo).
 ZONA = (0, 1, 2)
-
-# Ordem de força da evidência, usada só para desempatar papéis no mesmo decil. Os dois rótulos de
-# alerta ficam por último de propósito: são anti-sinais, e não podem passar à frente de uma linha
-# fraca porém coerente só porque têm muitos episódios.
-FORCA_EVIDENCIA = {"c-forte": 0, "c-moderada": 1, "c-fraca": 2, "c-alerta": 3}
-
-
-def classifica_evidencia(episodios, excesso, media, na_zona):
-    """
-    Traduz os números de uma linha no rótulo de evidência exibido na tela.
-
-    Por que existe: o rótulo é a única parte da tela que emite juízo, então a regra precisa estar
-    num só lugar, testada, e não espalhada pelo código de renderização. Ela mede **força da
-    evidência**, não tamanho do retorno — um papel pode ter retorno alto e evidência fraca.
-
-    Entrada: episodios (eventos independentes), excesso (retorno do decil menos a taxa-base),
-    media (retorno absoluto do decil), na_zona (o papel está nos decis 0 a 2?).
-
-    Fase 1: armadilhas primeiro, porque elas VENCEM qualquer força — bate a base mas perde dinheiro
-            (excesso positivo com retorno negativo), ou o histórico contradiz o padrão (excesso
-            negativo dentro da zona). Deixar a força falar antes esconderia justamente os casos
-            que mais enganam.
-    Fase 2: fora da zona não é sinal, por melhor que seja o histórico.
-    Fase 3: dentro da zona, a escala vem do número de episódios independentes.
-    Saída: tupla (classe css, rótulo legível).
-    """
-    # Fase 1: as duas armadilhas, antes de qualquer avaliação de força.
-    if na_zona and excesso > 0 and media < 0:
-        return "c-alerta", "bate a base, mas perde"
-    if na_zona and excesso < 0:
-        return "c-alerta", "contradiz o padrão"
-    # Fase 2: fora dos decis baixos não há viés observado a reportar.
-    if not na_zona:
-        return "c-fraca", "fora da zona"
-    # Fase 3: escala por episódios independentes (o "n" honesto), não por tamanho de retorno.
-    if episodios > 15:
-        return "c-forte", "forte"
-    if episodios >= 5:
-        return "c-moderada", "moderada"
-    return "c-fraca", "fraca"
-
 
 def estado_de_hoje(prices, window, horizon, slope_lag, vol_lag, n_faixas, data_inicio_teste):
     """
@@ -192,48 +149,12 @@ def _carimbo(agora=None):
     return agora.strftime("%d/%m/%Y às %Hh%M")
 
 
-def _mini_regua(decil):
-    """Dez quadradinhos com o decil atual aceso — a posição do papel lida de relance, não como número."""
-    return "".join('<span class="on"></span>' if i == decil else "<span></span>"
-                   for i in range(10))
-
-
-def seleciona_destaques(papeis, top_n):
-    """
-    Escolhe e ordena os papéis que aparecem na tabela, já com a evidência classificada.
-
-    Por que existe: a tabela e a gravação das planilhas precisam concordar sobre QUAIS papéis estão
-    na tela — se divergirem, a página oferece download de arquivo que não existe, ou o pacote leva
-    dezenas de arquivos que ninguém alcança. Uma função só, usada pelos dois, elimina a divergência.
-
-    Entrada: papeis (lista de dicts de `estado_de_hoje`, sem o índice), top_n (quantos exibir).
-    Fase 1: classificar a evidência de cada papel — precisa vir antes da ordenação, porque é o
-            critério de desempate.
-    Fase 2: ordenar por decil (mais afastado para baixo primeiro), depois por força da evidência,
-            depois por excesso decrescente como último desempate.
-    Fase 3: cortar em top_n.
-    Saída: lista de tuplas (papel, na_zona, classe css, rótulo), na ordem de exibição.
-    """
-    # Fase 1: classificar antes de ordenar.
-    avaliados = []
-    for p in papeis:
-        # Estar na zona de viés muda o rótulo, então entra na classificação.
-        na_zona = p["decil"] in ZONA
-        classe, rotulo = classifica_evidencia(p["episodios"], p["excesso"], p["media"], na_zona)
-        avaliados.append((p, na_zona, classe, rotulo))
-    # Fase 2: decil, força da evidência, excesso decrescente.
-    avaliados.sort(key=lambda a: (a[0]["decil"], FORCA_EVIDENCIA[a[2]], -a[0]["excesso"]))
-    # Fase 3 e saída: só os primeiros.
-    return avaliados[:top_n]
-
-
 def _link_download(ticker, compacto=False):
     """
     Link para a planilha de estudo do papel, no formato que o navegador salva em vez de abrir.
 
-    Por que existe: o caminho do arquivo é derivado do ticker em dois lugares da página (leitura
-    mestra e tabela). Centralizar aqui garante que os dois nunca divirjam — e que a gravação em
-    `main()` e o link tenham a mesma regra de nome.
+    Por que existe: o caminho do arquivo é derivado do ticker na página e na gravação em `main()`;
+    centralizar aqui garante que os dois tenham a mesma regra de nome.
     """
     # `download` é o atributo que faz o navegador baixar; sem ele o Excel abriria como binário.
     classe = "baixar compacto" if compacto else "baixar"
@@ -269,21 +190,19 @@ def _travessia(n_alerta):
             f"<a href='extremos.html'>Ver os destaques →</a>")
 
 
-def monta_pagina(indice, papeis, template, top_n=config.DIST_TOP_N, agora=None,
-                 estado=None):
+def monta_pagina(indice, template, agora=None, estado=None):
     """
-    Preenche o template com os dados do índice e dos papéis, devolvendo o HTML final.
+    Preenche o template com os dados do índice, devolvendo o HTML final.
 
     Por que existe: separar o cálculo (acima) da renderização (aqui) mantém as duas coisas
     testáveis — e é possível gerar a página inteira sem tocar na rede, o que os testes fazem.
 
-    Entrada: indice (dict de `estado_de_hoje` do BOVA11 + chave "ticker"), papeis (lista de dicts
-    iguais), template (string com os marcadores de MARCADORES), top_n (quantos papéis exibir),
-    agora (instante do carimbo; `None` = agora, e é o que a publicação usa — o parâmetro existe
-    para o teste poder fixar o relógio).
+    Entrada: indice (dict de `estado_de_hoje` do BOVA11 + chave "ticker"), template (string com
+    os marcadores de MARCADORES), agora (instante do carimbo; `None` = agora, e é o que a
+    publicação usa — o parâmetro existe para o teste poder fixar o relógio), estado (o que
+    `gerar_extremos.py` gravou, para a barra de abas).
     Fase 1: montar a leitura mestra — título, veredito, régua de dez segmentos e as cinco medidas.
-    Fase 2: montar uma linha de tabela por papel em destaque.
-    Fase 3: substituir os marcadores. Nenhum pode sobrar.
+    Fase 2: substituir os marcadores. Nenhum pode sobrar.
     Saída: string com o HTML completo.
     """
     # Fase 1: a leitura mestra. O veredito depende de o índice estar ou não na zona de viés.
@@ -313,35 +232,14 @@ def monta_pagina(indice, papeis, template, top_n=config.DIST_TOP_N, agora=None,
             (str(indice["episodios"]), "episódios independentes"),
         ])
 
-    # Fase 2: uma linha por papel em destaque (a seleção e a ordem vêm de `seleciona_destaques`).
-    linhas = []
-    for p, na_zona, classe, rotulo in seleciona_destaques(papeis, top_n):
-        # Linhas de destaque: dentro da zona e sem armadilha.
-        marcada = ' class="marcada"' if na_zona and classe not in ("c-alerta", "c-fraca") else ""
-        # Retorno e excesso ganham ênfase quando são positivos e o papel está na zona.
-        forte = ' class="destaque"' if na_zona and p["media"] > 0 else ""
-        linhas.append(
-            f'<tr{marcada}>'
-            f'<td class="esq"><span class="papel">{p["ticker"]}</span></td>'
-            f'<td class="esq"><span class="mini">{_mini_regua(p["decil"])}</span></td>'
-            f'<td>{_pct(p["dist"], sinal=True)}</td>'
-            f'<td{forte}>{_pct(p["media"], sinal=True)}</td>'
-            f'<td>{_pct(p["base"], sinal=True)}</td>'
-            f'<td{forte}>{_pct(p["excesso"], sinal=True).replace("%", " pp")}</td>'
-            f'<td>{_pct(p["freq_pos"], casas=0)}</td>'
-            f'<td>{p["episodios"]}</td>'
-            f'<td class="esq"><span class="chip {classe}">{rotulo}</span></td>'
-            f'<td class="esq">{_link_download(p["ticker"], compacto=True)}</td>'
-            f'</tr>')
-
-    # Fase 3: substituir todos os marcadores.
+    # Fase 2: substituir todos os marcadores.
     # A barra e a travessia vêm do estado que `gerar_extremos.py` deixou. Ausência dele não é erro:
     # a barra sai sem contador e a travessia sem número, que é o correto quando ainda não se mediu.
     estado = estado or {}
     n_alerta = estado.get("papeis_com_alerta")
     valores = {"TITULO_INDICE": titulo, "SUB_INDICE": sub, "VEREDITO": veredito,
                "CLASSE_VEREDITO": classe_veredito, "REGUA": regua,
-               "MEDIDAS": medidas, "LINHAS": "".join(linhas),
+               "MEDIDAS": medidas,
                "BAIXAR_INDICE": _link_download(indice["ticker"]),
                "CARIMBO": _carimbo(agora),
                "ABAS": barra_de_abas("triagem", n_alerta),
@@ -355,80 +253,44 @@ def monta_pagina(indice, papeis, template, top_n=config.DIST_TOP_N, agora=None,
 
 def main() -> None:
     """
-    I/O da geração: baixa os papéis, aplica a peneira, calcula o estado de hoje e grava a página.
+    I/O da geração: baixa o índice, aplica a peneira, calcula o estado de hoje e grava a página.
 
-    Fase 1: ler a lista de tickers e o template.
-    Fase 2: para cada papel, baixar e passar pela peneira de qualidade (com exigência de treino
-            útil). Aprovados e reprovados anunciam uma linha cada, na hora — não há resumo no fim,
-            porque a barra já carrega o placar e repetir os números só afastaria o motivo de cada
-            reprovação do momento em que ela aconteceu.
-    Fase 3: calcular o estado de hoje de cada aprovado e separar o índice dos demais.
-    Fase 4: montar a página e gravar em `saida/index.html`.
-    Fase 5: gravar uma planilha de estudo por papel aprovado.
+    Por que só o índice: desde 23/11/2026 a página não tem mais a tabela de papéis (pedido do
+    usuário), e os ~100 downloads que a alimentavam deixaram de servir para alguma coisa.
+
+    Fase 1: ler o template.
+    Fase 2: baixar o índice e passar pela peneira de qualidade. Sem ele não há página: o processo
+            encerra com erro, e o fluxo de publicação mantém a última versão no ar.
+    Fase 3: calcular o estado de hoje.
+    Fase 4: montar a página e gravar em `saida/index.html`, com a planilha de estudo do índice.
     """
     aqui = Path(__file__).parent
-    # Fase 1: lista de papéis e template.
-    # Lista de papéis: mora DENTRO da pasta, senão a publicação dependeria de um arquivo do
-    # laboratório que não sobe junto. Desde 12/10/2026 é a planilha `lista_tickers_liquidos.xlsx`
-    # (coluna `ticker`), a mesma que o laboratório usa — antes era `tickers.csv`. O índice
-    # (`config.DIST_INDICE`) precisa estar nela: é a leitura mestra da página.
-    tickers = (pd.read_excel(aqui / "lista_tickers_liquidos.xlsx")["ticker"]
-               .dropna().astype(str).str.strip().str.upper().tolist())
+    # Fase 1: o template.
     template = (aqui / "template.html").read_text(encoding="utf-8")
-    print(f"{len(tickers)} papéis na lista | janela {config.DIST_JANELA}, "
-          f"horizonte {config.DIST_HORIZONTE} dias")
+    t = config.DIST_INDICE
+    print(f"TRIAGEM — {t} | janela {config.DIST_JANELA}, horizonte {config.DIST_HORIZONTE} dias")
 
-    # `reprovados` é só um contador: o motivo de cada reprovação é anunciado na hora, e não guardado
-    # para um resumo no fim.
-    aprovados, reprovados = [], 0
-    # Fase 2 e 3: peneira e estado de hoje, papel a papel. A barra da tqdm dá o andamento (são
-    # ~70 downloads, alguns minutos), e o contador ao lado dela mostra o placar em tempo real —
-    # sem ele, uma execução com muitas reprovações só apareceria no fim.
-    # `file=sys.stdout` porque o resumo final usa print: com a barra no stderr (o padrão da tqdm),
-    # os dois fluxos se intercalam fora de ordem no log do GitHub Actions.
-    barra = tqdm(tickers, desc="papéis", unit="papel", ncols=78, file=sys.stdout)
-    for t in barra:
-        try:
-            prices = load_prices(f"{t}{config.TICKER_SUFFIX}", config.EXTREMOS_PERIOD)
-        except Exception:
-            reprovados += 1
-            barra.write(f"  fora {t:<8} falha no download")
-            barra.set_postfix_str(f"ok {len(aprovados)} | fora {reprovados}")
-            continue
-        q = avalia_qualidade(prices, janela_max=config.DIST_JANELA,
-                             vol_lag=config.EXTREMOS_VOL_LAG,
-                             data_inicio_teste=config.EXTREMOS_INICIO_TESTE,
-                             min_treino_util=750)
-        if not q["aprovado"]:
-            reprovados += 1
-            # Motivo por extenso: é o que distingue um papel novo demais de uma série com
-            # desdobramento não ajustado, e essa diferença precisa ser lida, não contada.
-            barra.write(f"  fora {t:<8} {'; '.join(q['motivos'])}")
-            barra.set_postfix_str(f"ok {len(aprovados)} | fora {reprovados}")
-            continue
-        try:
-            e = estado_de_hoje(prices, config.DIST_JANELA, config.DIST_HORIZONTE,
-                               config.SLOPE_LAG, config.EXTREMOS_VOL_LAG,
-                               config.EXTREMOS_N_FAIXAS, config.EXTREMOS_INICIO_TESTE)
-            e["ticker"] = t
-            aprovados.append(e)
-            # Linha curta de sucesso. `tqdm.write` em vez de `print` para não embaralhar a barra.
-            # Apenas texto ASCII: o console do Windows usa cp1252 por padrão, e um símbolo como
-            # "✓" derrubaria a execução com erro de codificação.
-            barra.write(f"  ok  {t:<8} decil {e['decil']}  "
-                        f"{_pct(e['excesso'], sinal=True).replace('%', ' pp')}")
-        except Exception as erro:
-            reprovados += 1
-            barra.write(f"  fora {t:<8} erro no cálculo: {erro}")
-        barra.set_postfix_str(f"ok {len(aprovados)} | fora {reprovados}")
-    barra.close()
-
-    # Separar o índice (a leitura mestra) dos papéis individuais.
-    indice = next((e for e in aprovados if e["ticker"] == config.DIST_INDICE), None)
-    if indice is None:
-        raise SystemExit(f"O índice {config.DIST_INDICE} não passou na peneira — "
+    # Fase 2: download e peneira. Qualquer falha aqui encerra: sem a leitura mestra não há página.
+    try:
+        prices = load_prices(f"{t}{config.TICKER_SUFFIX}", config.EXTREMOS_PERIOD)
+    except Exception as erro:
+        raise SystemExit(f"O índice {t} não pôde ser baixado: {erro}")
+    q = avalia_qualidade(prices, janela_max=config.DIST_JANELA,
+                         vol_lag=config.EXTREMOS_VOL_LAG,
+                         data_inicio_teste=config.EXTREMOS_INICIO_TESTE,
+                         min_treino_util=750)
+    if not q["aprovado"]:
+        # Motivo por extenso: distingue dado ruim de série curta, e essa diferença precisa ser lida.
+        raise SystemExit(f"O índice {t} não passou na peneira ({'; '.join(q['motivos'])}) — "
                          f"sem ele a tela não pode ser gerada.")
-    papeis = [e for e in aprovados if e["ticker"] != config.DIST_INDICE]
+
+    # Fase 3: o estado de hoje.
+    indice = estado_de_hoje(prices, config.DIST_JANELA, config.DIST_HORIZONTE,
+                            config.SLOPE_LAG, config.EXTREMOS_VOL_LAG,
+                            config.EXTREMOS_N_FAIXAS, config.EXTREMOS_INICIO_TESTE)
+    indice["ticker"] = t
+    print(f"  ok  {t:<8} decil {indice['decil']}  "
+          f"{_pct(indice['excesso'], sinal=True).replace('%', ' pp')}")
 
     # Fase 4: montar e gravar.
     saida = aqui / "saida"; saida.mkdir(exist_ok=True)
@@ -436,24 +298,14 @@ def main() -> None:
     # O estado vem de `gerar_extremos.py`, que roda antes no fluxo de publicação. Ausência não é
     # erro: a barra sai sem contador, que é o correto quando ainda não se mediu.
     estado = le_estado(saida)
-    destino.write_text(monta_pagina(indice, papeis, template, config.DIST_TOP_N, estado=estado),
-                       encoding="utf-8")
+    destino.write_text(monta_pagina(indice, template, estado=estado), encoding="utf-8")
     # Os estilos acompanham a página: ela os linka por caminho relativo, e sem a cópia o site sobe
     # sem formatação nenhuma.
     copia_estatica(aqui, saida)
-
-    # Fase 5: uma planilha por papel VISÍVEL na tela — o índice mais os destaques da tabela. Os
-    # aprovados que ficaram de fora da tabela não geram arquivo: a página não tem link para eles, e
-    # publicar dados que ninguém alcança só engorda o pacote. A mesma `seleciona_destaques` decide
-    # aqui e na tabela, então os dois nunca divergem.
-    visiveis = [indice] + [p for p, _, _, _ in seleciona_destaques(papeis, config.DIST_TOP_N)]
+    # A planilha de estudo do índice, alcançada pelo botão da leitura mestra.
     pasta_dados = saida / "dados"; pasta_dados.mkdir(exist_ok=True)
-    for e in tqdm(visiveis, desc="planilhas", unit="arq", ncols=78, file=sys.stdout):
-        e["df"].to_excel(pasta_dados / f"{e['ticker']}.xlsx", sheet_name="estudo")
-
-    mb = sum(p.stat().st_size for p in pasta_dados.glob("*.xlsx")) / 1e6
-    print(f"\npágina gravada em {destino}")
-    print(f"{len(visiveis)} planilhas de estudo em {pasta_dados} ({mb:.1f} MB)")
+    indice["df"].to_excel(pasta_dados / f"{t}.xlsx", sheet_name="estudo")
+    print(f"página gravada em {destino}")
 
 
 if __name__ == "__main__":
