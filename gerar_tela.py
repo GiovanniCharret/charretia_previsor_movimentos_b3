@@ -52,6 +52,11 @@ FUSO_BRASILIA = timezone(timedelta(hours=-3))
 # Decis considerados "zona de viés observado" (os três mais afastados para baixo).
 ZONA = (0, 1, 2)
 
+# Decil de alerta de "ganhar menos" (pedido do usuário, 25/11/2026). No teste da v1 na forma da v3,
+# o decil 9 do Ibovespa (cinco divisões, dias, frequência de não perder) foi a única leitura que
+# passou a correção: −20,8 pontos, valor-p corrigido 0,020. No BOVA11, mesma direção sem passar.
+ALERTA = (9,)
+
 def estado_de_hoje(prices, window, horizon, slope_lag, vol_lag, n_faixas, data_inicio_teste):
     """
     Em que decil o papel está HOJE, e o que historicamente veio depois de dias nesse decil.
@@ -205,21 +210,40 @@ def monta_pagina(indice, template, agora=None, estado=None):
     Fase 2: substituir os marcadores. Nenhum pode sobrar.
     Saída: string com o HTML completo.
     """
-    # Fase 1: a leitura mestra. O veredito depende de o índice estar ou não na zona de viés.
-    na_zona_idx = indice["decil"] in ZONA
-    titulo = (f"{indice['ticker']} está em terreno neutro" if not na_zona_idx
-              else f"{indice['ticker']} está afastado para baixo")
-    sub = ("Não há viés a explorar hoje." if not na_zona_idx
-           else "O mercado inteiro está na zona onde o viés de alta foi observado.")
-    veredito = "sem sinal" if not na_zona_idx else "mercado na zona"
-    classe_veredito = "" if not na_zona_idx else "v-zona"
+    # Fase 1: a leitura mestra. O veredito tem três estados: zona de viés de alta, decil de alerta
+    # ("ganhar menos") ou terreno neutro.
+    t = indice["ticker"]
+    if indice["decil"] in ZONA:
+        # O índice está na zona onde o viés de alta foi observado.
+        titulo, sub = f"{t} está afastado para baixo", \
+            "O mercado inteiro está na zona onde o viés de alta foi observado."
+        veredito, classe_veredito = "mercado na zona", "v-zona"
+    elif indice["decil"] in ALERTA:
+        # O índice está no decil de cima: historicamente, ganhou menos nos 45 pregões seguintes.
+        titulo, sub = f"{t} está afastado para cima", \
+            ("Em dias assim, o índice subiu com menos frequência nos 45 pregões seguintes. "
+             "É ganhar menos, não cair: não é sinal de venda.")
+        veredito, classe_veredito = "tende a ganhar menos", "v-alerta"
+    else:
+        # Nem uma ponta nem a outra.
+        titulo, sub = f"{t} está em terreno neutro", "Não há viés a explorar hoje."
+        veredito, classe_veredito = "sem sinal", ""
 
-    # Régua: dez segmentos, os três primeiros pintados como zona, o atual destacado.
-    regua = "".join(
-        f'<div class="seg aqui"><i>{i}</i></div>' if i == indice["decil"]
-        else f'<div class="seg zona"><i>{i}</i></div>' if i in ZONA
-        else f'<div class="seg"><i>{i}</i></div>'
-        for i in range(10))
+    # Régua: dez segmentos; os três primeiros pintados como zona, o decil 9 como alerta, e o atual
+    # destacado (no decil 9, o destaque mantém a cor de alerta).
+    def _classe_seg(i):
+        # Monta a classe do segmento i combinando "aqui" com a pintura da faixa.
+        partes = ["seg"]
+        # O decil de hoje leva o destaque.
+        if i == indice["decil"]:
+            partes.append("aqui")
+        # O decil de alerta é pintado sempre; a zona, só quando não é o de hoje (como antes).
+        if i in ALERTA:
+            partes.append("alerta")
+        elif i in ZONA and i != indice["decil"]:
+            partes.append("zona")
+        return " ".join(partes)
+    regua = "".join(f'<div class="{_classe_seg(i)}"><i>{i}</i></div>' for i in range(10))
 
     # Cinco medidas do índice (a mesma ordem da tela aprovada).
     medidas = "".join(

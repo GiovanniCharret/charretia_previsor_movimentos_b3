@@ -82,6 +82,35 @@ def test_monta_pagina_marca_o_decil_atual_na_regua():
     assert '<div class="seg aqui"><i>7</i></div>' in html
 
 
+class TestDecilNoveComoAlerta:
+    # Pedido do usuário (25/11/2026): o decil 9 é pintado como alerta de "ganhar menos", a única
+    # leitura que passou a correção no teste da v1 na forma da v3 (Ibovespa, cinco divisões).
+    def _html(self, decil):
+        template = open("template.html", encoding="utf-8").read()
+        return monta_pagina(_papel("BOVA11", decil), template)
+
+    def test_o_decil_nove_fica_pintado_mesmo_quando_nao_e_o_de_hoje(self):
+        html = self._html(4)
+        assert '<div class="seg alerta"><i>9</i></div>' in html
+
+    def test_hoje_no_decil_nove_o_veredito_avisa_que_tende_a_ganhar_menos(self):
+        html = self._html(9)
+        assert '<div class="seg aqui alerta"><i>9</i></div>' in html
+        assert "tende a ganhar menos" in html
+        assert "v-alerta" in html
+
+    def test_fora_do_decil_nove_nao_ha_veredito_de_alerta(self):
+        assert "v-alerta" not in self._html(4)
+
+
+def test_a_pagina_avisa_que_a_v1_tem_uma_divisao_e_nao_passa_contra_o_placebo():
+    # Pedido do usuário (25/11/2026), depois do placebo da v1 exata: valor-p 0,19 (0,58 corrigido).
+    template = open("template.html", encoding="utf-8").read()
+    html = monta_pagina(_papel("BOVA11", 3), template)
+    assert "uma divisão só" in html
+    assert "placebo" in html
+
+
 class TestCarimboDeExecucao:
     def test_usa_o_horario_recebido(self):
         # O carimbo é injetável para o teste poder fixar o instante — sem isso a única verificação

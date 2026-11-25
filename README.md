@@ -82,7 +82,7 @@ recópia, e as duas versões divergiriam para sempre.
 
 | versão | página | situação |
 |---|---|---|
-| v1 — triagem por afastamento | `index.html` | mantida; página de entrada |
+| v1 — triagem por afastamento | `index.html` | mantida; página de entrada. Desde 25/11/2026 avisa que mede uma divisão só e não passa contra o placebo, e pinta o decil 9 como alerta de "ganhar menos" |
 | v2 — gatilhos de proteção | (retirada) | **descontinuada em 04/11/2026**; fica só o registro na página de método |
 | v3 — faixa extrema | `extremos.html` | vigente; publica um **indício**, com esse nome |
 | v4 — bancos e elétricas | `setores.html` | **em observação** desde 04/11/2026: acompanha uma hipótese travada, ao lado da v3 |

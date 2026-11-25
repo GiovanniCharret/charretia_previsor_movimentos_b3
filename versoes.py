@@ -350,6 +350,14 @@ VERSOES = [
                            "ruído. A página ficou só com a leitura do índice, e o gerador passou a "
                            "baixar apenas o BOVA11. A leitura papel a papel está na faixa extrema "
                            "(v3)."),
+            ("25/11/2026", "A página passou a avisar o próprio limite: mede <b>uma divisão só</b> "
+                           "(teste de 2021 em diante) e <b>não passa contra o placebo</b> — o decil 0 "
+                           "do BOVA11 dá valor-p de 0,19 contra 2.000 séries sem memória, e 0,58 "
+                           "descontada a escolha da média de 90. Medida como a v3 (por dia, frequência "
+                           "de não perder, várias épocas), o único decil que passou a correção foi o "
+                           "9 do Ibovespa (−20,8 pontos, valor-p corrigido 0,020); a pedido do "
+                           "usuário, ele passou a ser pintado na régua como alerta de <b>ganhar "
+                           "menos</b>, que não é sinal de venda."),
         ],
         # A receita de retorno só existe para versões que não estão em produção — para a vigente,
         # "como voltar" não faz sentido.

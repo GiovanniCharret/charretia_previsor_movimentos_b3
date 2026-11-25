@@ -78,6 +78,9 @@ header { display:flex; align-items:flex-end; justify-content:space-between;
    estado em que a tela tem algo a dizer, e precisa se distinguir do "sem sinal". */
 .veredito.v-zona { color:var(--acento); background:var(--acento-fundo);
                    border-color:color-mix(in srgb, var(--acento) 45%, transparent); }
+/* o índice no decil 9: tende a ganhar menos (alerta, não venda) — desde 25/11/2026. */
+.veredito.v-alerta { color:var(--alerta); background:var(--alerta-fundo);
+                     border-color:color-mix(in srgb, var(--alerta) 45%, transparent); }
 
 /* ---------- baixar a planilha de estudo ---------- */
 /* Utilitário, não chamada para ação: fica em tom apagado ao lado do que de fato importa na
@@ -101,6 +104,9 @@ header { display:flex; align-items:flex-end; justify-content:space-between;
        border:1px solid var(--rule); position:relative; }
 .seg.zona { background:var(--acento-fundo); border-color:color-mix(in srgb, var(--acento) 30%, transparent); }
 .seg.aqui { background:var(--acento); border-color:var(--acento); }
+/* o decil 9, pintado como alerta de "ganhar menos"; quando é o de hoje, a cor cheia de alerta. */
+.seg.alerta { background:var(--alerta-fundo); border-color:color-mix(in srgb, var(--alerta) 30%, transparent); }
+.seg.aqui.alerta { background:var(--alerta); border-color:var(--alerta); }
 .seg i { position:absolute; inset:auto 0 5px; text-align:center; font-style:normal;
          font-family:var(--mono); font-size:10px; color:var(--ink-3); }
 .seg.aqui i { color:var(--surface); font-weight:700; }

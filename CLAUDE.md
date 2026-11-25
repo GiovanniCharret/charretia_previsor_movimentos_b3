@@ -10,7 +10,7 @@ O repositório é escrito em português (código, docstrings, comentários, comm
 python -m venv .venv; .venv\Scripts\activate
 pip install -r requirements.txt pytest
 
-python -m pytest -q                        # os 92 testes (offline, preços sintéticos, segundos)
+python -m pytest -q                        # os 96 testes (offline, preços sintéticos, segundos)
 python -m pytest tests/test_gerar_setores.py::TestTabela -q              # uma classe
 python -m pytest -q -k "regua"                                            # um teste por nome
 
@@ -68,7 +68,12 @@ O invariante que o código sustenta de propósito:
   (`quantis_do_treino`), a estatística histórica sai só do teste, e o decil exibido vem da última
   linha da série completa — inclusive as linhas sem retorno futuro. Ler o decil na tabela filtrada
   por `dropna()` mostraria a posição de `DIST_HORIZONTE` pregões atrás, erro silencioso e grave.
-`ZONA = (0, 1, 2)` (decis de viés observado) vive no topo de `gerar_tela.py`;
+`ZONA = (0, 1, 2)` (decis de viés observado) e `ALERTA = (9,)` vivem no topo de `gerar_tela.py`.
+**Desde 25/11/2026** o decil 9 é pintado na régua como alerta de "ganhar menos" (selo "tende a
+ganhar menos" quando o BOVA11 está nele; não é sinal de venda), e a página avisa que mede uma divisão
+só e não passa contra o placebo (valor-p 0,19; 0,58 corrigido). Base: o único decil que passou a
+correção no teste da v1 na forma da v3 foi o 9 do Ibovespa (ver `PLAN.md` do laboratório).
+
 os parâmetros do estudo vivem em `nucleo/config.py`, em dois blocos — um por versão da tela.
 
 ### Os gatilhos (v2) — descontinuada em 04/11/2026
