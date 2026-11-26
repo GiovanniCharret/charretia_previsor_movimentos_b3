@@ -10,7 +10,7 @@ O repositório é escrito em português (código, docstrings, comentários, comm
 python -m venv .venv; .venv\Scripts\activate
 pip install -r requirements.txt pytest
 
-python -m pytest -q                        # os 96 testes (offline, preços sintéticos, segundos)
+python -m pytest -q                        # os 105 testes (offline, preços sintéticos, segundos)
 python -m pytest tests/test_gerar_setores.py::TestTabela -q              # uma classe
 python -m pytest -q -k "regua"                                            # um teste por nome
 
@@ -108,8 +108,30 @@ indício medido **por dia** nos percentis de 2,5% e 5%. Regras que não devem se
   ficam em `saida/faixa_extrema_do_dia.csv`, e a página diz quantos ficaram de fora.
 - **O quadro "Um indício, não um achado" faz parte da página** e tem teste.
 - Os cortes e as medidas vêm de `estudo/faixa_extrema_cortes.csv`, `faixa_extrema_medidas.csv` e
-  `faixa_extrema_por_janela.csv`, exportados por `robusta_ml.faixa_extrema`. A tela não recalcula
+  `faixa_extrema_por_janela.csv`, exportados por `robusta_ml.faixa_extrema` (e, desde a v3.1, os dois
+  arquivos da amplitude). A tela não recalcula
   corte nem frequência, e **falha de propósito** se um dos três faltar.
+
+### A v3.1 — a amplitude da queda (26/11/2026)
+
+Nasceu do teste do laboratório com o limiar travado no treino (indício, valor-p corrigido de 0,014
+e 0,008): dentro da faixa extrema, o excesso mora nos dias de **queda larga** (muitos outros papéis
+também no próprio corte); na **queda isolada** a frequência fica na taxa-base. É nota da v3 em
+`versoes.py`, não versão nova (a pergunta não mudou). Regras:
+
+- **A tela só conta.** `amplitude_do_dia` usa os escores que já eram calculados (nenhum download a
+  mais) e conta, por média e percentil, quantos papéis estão no corte; BOVA11, SMAL11 e IBOV11 ficam
+  fora (`FORA_DA_AMPLITUDE`). O limiar de "muitos papéis" (uma **fração** dos outros) e os
+  deslocamentos vêm de `estudo/amplitude_limiares.csv` e `amplitude_excessos.csv`, e a tela **falha
+  de propósito** se um deles faltar. Proveniência em `estudo/PROVENIENCIA_AMPLITUDE.md`.
+- **O papel é "larga" quando mais da metade das médias em que ele está no extremo é larga**; empate
+  conta como isolada (`queda_do_papel`, decisão do usuário). O próprio papel sai da conta.
+- **Três tabelas**, nesta ordem: larga em 2,5%, isolada em 2,5%, larga em 5%. As isoladas em 5%
+  **não aparecem** (excesso zero no teste); o painel diz quantas são, e elas não contam como destaque
+  nem no contador da aba.
+- **Frequência ajustada = frequência + deslocamento do grupo**, presa entre 0 e 100%. Somar, e não
+  multiplicar o excesso do papel, foi decisão do usuário. É aproximação pela média dos papéis.
+- `_secao_html` e `_linha_html` ganharam `ajustada` e `classe`, com padrão que deixa a v4 igual.
 
 ### Os gráficos da v3 — retirados (23/11/2026)
 

@@ -13,6 +13,8 @@ from planilha_estudo import DICIONARIO, grava_planilha, link_planilha, monta_est
 
 DIVISOES = [("2014-01-01", "2018-01-01"), ("2018-01-01", "2022-01-01")]
 RAIZ = Path(__file__).resolve().parents[1]
+# Os excessos da amplitude (v3.1), lidos do arquivo versionado que a tela usa.
+EXCESSOS = gerar_extremos.le_excessos(pd.read_csv(RAIZ / gerar_extremos.ARQUIVO_EXCESSOS))
 
 
 def _precos(n=3200, semente=5):
@@ -121,12 +123,15 @@ class TestLinkNasPaginas:
         comum = {"ticker": "BOM3", "percentil": 0.025, "taxa_base": 0.54, "divisoes_usadas": 5,
                  "inicio_medido": "2006-01-02", "fim_medido": "2026-09-11"}
         med = pd.DataFrame([{**comum, "horizonte": 45, "freq_dias": 0.63}])
-        return gerar_extremos.monta_tabela(sit, med)
+        # v3.1: a página precisa do tipo de queda e da frequência ajustada de cada linha.
+        return gerar_extremos.monta_tabela(sit, med).assign(queda="larga", janelas_largas=1,
+                                                            freq_ajustada=0.685)
 
     def test_a_faixa_extrema_so_linka_a_planilha_que_foi_gravada(self):
         # Link para arquivo que não existe vira erro no navegador: o papel sem planilha mostra "—".
         t = (RAIZ / "template_extremos.html").read_text(encoding="utf-8")
-        com = gerar_extremos.monta_pagina(t, self._ranking_v3(), "2026-10-09", 98, None, {"BOM3"})
-        sem = gerar_extremos.monta_pagina(t, self._ranking_v3(), "2026-10-09", 98)
+        com = gerar_extremos.monta_pagina(t, self._ranking_v3(), "2026-10-09", 98, None, {"BOM3"},
+                                          EXCESSOS)
+        sem = gerar_extremos.monta_pagina(t, self._ranking_v3(), "2026-10-09", 98, excessos=EXCESSOS)
         assert "dados/extremos_BOM3.xlsx" in com and "<th class='esq'>dados</th>" in com
         assert "dados/extremos_BOM3.xlsx" not in sem

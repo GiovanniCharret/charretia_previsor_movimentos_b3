@@ -190,6 +190,16 @@ VERSOES = [
                            "tabela) e gastavam processamento — cerca de 6 megabytes e um download "
                            "da história completa por destaque, todo dia. O código fica no commit "
                            "<code>ce5ae70</code>."),
+            ("26/11/2026", "<b>v3.1: a amplitude da queda.</b> O teste do laboratório com o limiar "
+                           "travado no treino deu indício (valor-p corrigido de 0,014 no corte de "
+                           "2,5% e 0,008 no de 5%): dentro da faixa extrema, os dias em que muitos "
+                           "outros papéis também estão no próprio corte tiveram cerca de 10 pontos "
+                           "a mais de frequência que os dias em que o papel cai quase sozinho, e "
+                           "estes ficaram na taxa-base. A página passou a ter três tabelas — queda "
+                           "larga em 2,5%, isolada em 2,5% e larga em 5% —, um painel com a "
+                           "quantidade de cada uma e a coluna <b>frequência ajustada</b>, que soma "
+                           "à frequência do papel o deslocamento do grupo (+5,5, −5,1 e +5,4 "
+                           "pontos). A pergunta da v3 não mudou; ganhou o contexto do dia."),
         ],
         "receita": None,
     },

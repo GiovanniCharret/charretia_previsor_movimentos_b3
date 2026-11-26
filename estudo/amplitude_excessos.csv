@@ -1,0 +1,5 @@
+percentil,queda,excesso,excesso_misturado,deslocamento
+0.025,larga,0.12,0.0652,0.0549
+0.025,isolada,0.0145,0.0652,-0.0507
+0.05,larga,0.0989,0.0454,0.0536
+0.05,isolada,-0.0005,0.0454,-0.0459

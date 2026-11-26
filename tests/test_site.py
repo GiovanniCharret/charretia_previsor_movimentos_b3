@@ -25,7 +25,9 @@ def _destaques(n=2):
                "janelas_5": 1, "janelas_medidas": 9, "horizonte": 45, "freq": 0.63,
                "taxa_base": 0.54, "acima_da_base": True, "divisoes_usadas": 5,
                "inicio_medido": "2006-03-01", "fim_medido": "2026-08-31"} for i in range(n)]
-    return pd.DataFrame(linhas, columns=gerar_extremos.COLUNAS)
+    # v3.1: o tipo de queda e a frequência ajustada de cada linha.
+    return pd.DataFrame(linhas, columns=gerar_extremos.COLUNAS).assign(
+        queda="larga", janelas_largas=1, freq_ajustada=0.685)
 
 
 class TestAsPaginasSeAlcancam:
@@ -64,7 +66,9 @@ class TestOSiteFalaDoMesmoDia:
         # O método lê o contador do estado; a faixa extrema o calcula. Se divergirem, o visitante vê
         # "2 papéis" na aba e uma tabela com outro número.
         t = (RAIZ / "template_extremos.html").read_text(encoding="utf-8")
-        html_extremos = gerar_extremos.monta_pagina(t, _destaques(2), "2026-11-03", 98, 2)
+        html_extremos = gerar_extremos.monta_pagina(
+            t, _destaques(2), "2026-11-03", 98, 2,
+            excessos=gerar_extremos.le_excessos(pd.read_csv(RAIZ / gerar_extremos.ARQUIVO_EXCESSOS)))
         html_metodo = gerar_metodo.monta_pagina(
             (RAIZ / "template_metodo.html").read_text(encoding="utf-8"), VERSOES, 2)
         assert "2 papéis" in html_extremos and "2 destaques na faixa extrema" in html_extremos

@@ -7,11 +7,24 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from gerar_extremos import (COLUNAS, escores_de_hoje, monta_pagina, monta_tabela,
-                            situacao_do_papel)
+from gerar_extremos import (ARQUIVO_EXCESSOS, COLUNAS, acrescenta_queda, amplitude_do_dia,
+                            escores_de_hoje, le_excessos, monta_pagina, monta_tabela,
+                            queda_do_papel, situacao_do_papel)
 
 RAIZ = Path(__file__).resolve().parents[1]
 TEMPLATE = (RAIZ / "template_extremos.html").read_text(encoding="utf-8")
+# Os excessos da amplitude (v3.1), do arquivo versionado que a tela lê.
+EXCESSOS = le_excessos(pd.read_csv(RAIZ / ARQUIVO_EXCESSOS))
+
+
+def _com_queda(t, queda="larga"):
+    # A tabela do dia da v3.1: o tipo de queda e a frequência ajustada em cada linha.
+    return t.assign(queda=queda, janelas_largas=1, freq_ajustada=t["freq"] + 0.05)
+
+
+def _pagina(t, *args, **kw):
+    # monta_pagina com os excessos do arquivo, para cada teste não repetir.
+    return monta_pagina(TEMPLATE, t, *args, excessos=EXCESSOS, **kw)
 
 
 def _cortes(janelas=(5, 20, 90), c25=-2.0, c5=-1.5):
@@ -94,8 +107,8 @@ class TestTabela:
         s = situacao_do_papel({5: -2.5, 20: -1.7, 90: -0.3}, _cortes())
         t = monta_tabela({"WEGE3": s}, pd.DataFrame(_medidas("WEGE3", 0.025))).iloc[0]
         assert t["faixa"] == 0.025 and t["janelas"] == "5"
-        html = monta_pagina(TEMPLATE, monta_tabela({"WEGE3": s}, pd.DataFrame(_medidas("WEGE3", 0.025))),
-                            "2026-10-16", 98)
+        html = _pagina(_com_queda(monta_tabela({"WEGE3": s}, pd.DataFrame(_medidas("WEGE3", 0.025)))),
+                       "2026-10-16", 98)
         assert "abaixo de 5%</span>" not in html and " de 9" not in html
 
     def test_classifica_na_faixa_mais_funda_e_deixa_de_fora_quem_nao_esta(self):
@@ -178,19 +191,19 @@ class TestPagina:
         sit = {"FUNDO3": _sit(2, 4), "RASO3": _sit(0, 1), "NATU3": _sit(0, 1, 6)}
         med = pd.DataFrame(_medidas("FUNDO3", 0.025) + _medidas("RASO3", 0.05)
                            + _medidas("NATU3", 0.05, f45=0.514, base=0.528))
-        return monta_tabela(sit, med)
+        return _com_queda(monta_tabela(sit, med))
 
     def _so_abaixo(self):
         med = pd.DataFrame(_medidas("NATU3", 0.05, f45=0.514, base=0.528))
-        return monta_tabela({"NATU3": _sit(0, 1, 6)}, med)
+        return _com_queda(monta_tabela({"NATU3": _sit(0, 1, 6)}, med))
 
     def test_nenhum_marcador_escapa_em_nenhum_dos_tres_estados(self):
-        vazio = pd.DataFrame(columns=COLUNAS)
+        vazio = _com_queda(pd.DataFrame(columns=COLUNAS))
         for t in (self._tabela(), self._so_abaixo(), vazio):
-            assert "{{" not in monta_pagina(TEMPLATE, t, "2026-10-09", 98, 3)
+            assert "{{" not in _pagina(t, "2026-10-09", 98, 3)
 
     def test_so_aparece_quem_tem_frequencia_acima_da_taxa_base(self):
-        html = monta_pagina(TEMPLATE, self._tabela(), "2026-10-09", 98)
+        html = _pagina(self._tabela(), "2026-10-09", 98)
         assert "FUNDO3" in html and "RASO3" in html
         assert "<td class='esq papel'>NATU3" not in html
         assert "2 destaques na faixa extrema" in html
@@ -199,30 +212,32 @@ class TestPagina:
 
     def test_dia_em_que_ha_papel_na_faixa_mas_nenhum_destaque(self):
         # O caso de 13/10/2026: a NATU3 na faixa, com frequência abaixo da taxa-base.
-        html = monta_pagina(TEMPLATE, self._so_abaixo(), "2026-10-09", 98)
+        html = _pagina(self._so_abaixo(), "2026-10-09", 98)
         assert "Nenhum destaque hoje" in html
-        assert html.count("nenhum destaque hoje") == 2
+        # As três seções (larga e isolada em 2,5%, larga em 5%) dizem que estão vazias.
+        assert html.count("nenhum destaque hoje") == 3
         assert "1 papel está na faixa extrema hoje, mas sem destaque" in html
 
     def test_dia_sem_papel_nenhum_na_faixa(self):
-        html = monta_pagina(TEMPLATE, pd.DataFrame(columns=COLUNAS), "2026-10-09", 98)
+        html = _pagina(_com_queda(pd.DataFrame(columns=COLUNAS)), "2026-10-09", 98)
         assert "Nenhum destaque hoje" in html
         assert "Nenhum papel está na faixa extrema hoje." in html
 
-    def test_as_duas_secoes_aparecem_sempre_e_cada_papel_na_sua(self):
-        html = monta_pagina(TEMPLATE, self._tabela(), "2026-10-09", 98)
+    def test_as_tres_secoes_aparecem_sempre_e_cada_papel_na_sua(self):
+        html = _pagina(self._tabela(), "2026-10-09", 98)
         a, b = html.index("Abaixo do percentil de 2,5%"), html.index("Abaixo do percentil de 5%")
         assert a < html.index("FUNDO3") < b < html.index("RASO3")
+        assert html.count("Abaixo do percentil de 2,5%") == 2
 
-    def test_a_pagina_diz_que_e_indicio_e_nao_achado(self):
-        html = monta_pagina(TEMPLATE, self._tabela(), "2026-10-09", 98)
-        assert "Um indício, não um achado" in html
-        assert "não é detectável" in html
+    def test_a_pagina_diz_que_e_indicio_e_so_na_queda_larga(self):
+        html = _pagina(self._tabela(), "2026-10-09", 98)
+        assert "Um indício, e só quando a queda é larga" in html
+        assert "0,014" in html and "0,008" in html
 
     def test_a_tabela_mostra_frequencia_e_taxa_base_sem_limite_inferior(self):
         # A coluna de limite inferior foi trocada pela de frequência (usuário, 13/10/2026): o piso
         # de 21% contra taxa-base de 53% foi lido como se fosse o placebo.
-        html = monta_pagina(TEMPLATE, self._tabela(), "2026-10-09", 98)
+        html = _pagina(self._tabela(), "2026-10-09", 98)
         assert "<th>frequência</th>" in html and "<th>taxa-base</th>" in html
         assert "limite inferior" not in html
         assert "63.0%" in html and "54.0%" in html
@@ -230,13 +245,88 @@ class TestPagina:
     def test_a_coluna_das_medias_explica_o_que_conta(self):
         # "Janelas abaixo do corte" não se lia sozinho; o cabeçalho e o glossário dizem agora que
         # são médias móveis e quantas são.
-        html = monta_pagina(TEMPLATE, self._tabela(), "2026-10-09", 98)
+        html = _pagina(self._tabela(), "2026-10-09", 98)
         assert "janela <span class='sub2'>(faixa de janelas)</span>" in html
         assert "5, 10, 20, 30, 45" in html
 
     def test_a_barra_marca_a_propria_pagina(self):
-        html = monta_pagina(TEMPLATE, self._tabela(), "2026-10-09", 98)
+        html = _pagina(self._tabela(), "2026-10-09", 98)
         assert 'href="extremos.html" aria-current="page"' in html
+
+
+class TestAmplitude:
+    """A v3.1: quantos outros papéis caíram junto, e o que isso faz na tabela."""
+
+    @staticmethod
+    def _cortes_de(tickers, janela=45):
+        # O mesmo corte para todos, numa média só: no de 2,5% em -2, no de 5% em -1,5.
+        return pd.concat([_cortes((janela,)).assign(ticker=t) for t in tickers], ignore_index=True)
+
+    def test_conta_quem_esta_no_corte_e_deixa_as_cestas_de_fora(self):
+        cortes = self._cortes_de(["AAA3", "BBB3", "CCC3", "BOVA11"])
+        escores = {"AAA3": {45: -2.5}, "BBB3": {45: -2.1}, "CCC3": {45: 0.3}, "BOVA11": {45: -3.0}}
+        c = amplitude_do_dia(escores, cortes)
+        # Dois de três no corte de 2,5%; o BOVA11 é cesta e não entra nem no denominador.
+        assert c[(0.025, 45)] == (2, 3) and c[(0.05, 45)] == (2, 3)
+
+    def test_papel_sem_escore_hoje_sai_do_denominador(self):
+        cortes = self._cortes_de(["AAA3", "BBB3"])
+        c = amplitude_do_dia({"AAA3": {45: -2.5}, "BBB3": {45: float("nan")}}, cortes)
+        assert c[(0.025, 45)] == (1, 1)
+
+    def test_o_proprio_papel_sai_da_conta(self):
+        # 3 de 11 no corte, contando o próprio papel: dos 10 outros, 2 — fração 0,2.
+        contagens = {(0.025, 45): (3, 11)}
+        assert queda_do_papel("AAA3", [45], 0.025, contagens, {(0.025, 45): 0.2})["queda"] == "larga"
+        assert queda_do_papel("AAA3", [45], 0.025, contagens, {(0.025, 45): 0.21})["queda"] == "isolada"
+
+    def test_maioria_das_medias_e_empate_conta_como_isolada(self):
+        # Regra de 26/11/2026: larga quando MAIS da metade das médias é larga.
+        contagens = {(0.025, 20): (6, 11), (0.025, 45): (1, 11), (0.025, 90): (6, 11)}
+        lim = {(0.025, w): 0.3 for w in (20, 45, 90)}
+        assert queda_do_papel("AAA3", [20, 45, 90], 0.025, contagens, lim) == {
+            "queda": "larga", "janelas_largas": 2}
+        assert queda_do_papel("AAA3", [20, 45], 0.025, contagens, lim)["queda"] == "isolada"
+
+    def test_media_sem_limiar_ou_sem_outros_papeis_nao_vira_larga(self):
+        # Com um papel só (a linha de comando), não há outros: a queda nunca é larga.
+        assert queda_do_papel("AAA3", [45], 0.025, {(0.025, 45): (1, 1)}, {(0.025, 45): 0.1})["queda"] == "isolada"
+        assert queda_do_papel("AAA3", [45], 0.025, {(0.025, 45): (9, 11)}, {})["queda"] == "isolada"
+
+    def test_a_frequencia_ajustada_soma_o_deslocamento_do_grupo(self):
+        sit = {"BOM3": {**_sit(1, 1), "lista_2_5": [45], "lista_5": [45]}}
+        t = monta_tabela(sit, pd.DataFrame(_medidas("BOM3", 0.025)))
+        larga = acrescenta_queda(t, sit, {(0.025, 45): (9, 11)}, {(0.025, 45): 0.2}, EXCESSOS).iloc[0]
+        isolada = acrescenta_queda(t, sit, {(0.025, 45): (1, 11)}, {(0.025, 45): 0.2}, EXCESSOS).iloc[0]
+        assert larga["queda"] == "larga" and isolada["queda"] == "isolada"
+        assert larga["freq_ajustada"] == pytest.approx(0.63 + EXCESSOS[(0.025, "larga")]["deslocamento"])
+        assert isolada["freq_ajustada"] == pytest.approx(0.63 + EXCESSOS[(0.025, "isolada")]["deslocamento"])
+
+    def test_a_frequencia_ajustada_nao_passa_de_100(self):
+        sit = {"BOM3": {**_sit(1, 1), "lista_2_5": [45], "lista_5": [45]}}
+        t = monta_tabela(sit, pd.DataFrame(_medidas("BOM3", 0.025, f45=0.99)))
+        r = acrescenta_queda(t, sit, {(0.025, 45): (9, 11)}, {(0.025, 45): 0.2}, EXCESSOS).iloc[0]
+        assert r["freq_ajustada"] == 1.0
+
+    def test_queda_isolada_no_5_nao_aparece_mas_o_painel_conta(self):
+        sit = {"FUNDO3": _sit(2, 4), "RASO3": _sit(0, 1), "SOZINHO3": _sit(1, 1), "LONGE3": _sit(0, 1)}
+        med = pd.DataFrame(_medidas("FUNDO3", 0.025) + _medidas("RASO3", 0.05)
+                           + _medidas("SOZINHO3", 0.025) + _medidas("LONGE3", 0.05))
+        t = monta_tabela(sit, med).set_index("ticker")
+        t["queda"] = pd.Series({"FUNDO3": "larga", "RASO3": "larga", "SOZINHO3": "isolada",
+                                "LONGE3": "isolada"})
+        t["janelas_largas"], t["freq_ajustada"] = 1, t["freq"]
+        html = _pagina(t.reset_index(), "2026-11-26", 98)
+        assert "<td class='esq papel'>LONGE3" not in html
+        assert "1 papel está em queda isolada no corte de 5% e não aparece: ali o excesso foi zero" in html
+        assert "3 destaques na faixa extrema, 2 em queda larga" in html
+        # A larga em 2,5% vem antes da isolada em 2,5%, que vem antes da larga em 5%.
+        assert html.index("FUNDO3") < html.index("SOZINHO3") < html.index("RASO3")
+
+    def test_a_tabela_tem_a_frequencia_ajustada_depois_da_frequencia(self):
+        html = _pagina(TestPagina()._tabela(), "2026-11-26", 98)
+        assert "<th>frequência</th><th>frequência ajustada*</th><th>taxa-base</th>" in html
+        assert "* <b>Frequência ajustada</b>" in html
 
 
 class TestQuantoBaixar:

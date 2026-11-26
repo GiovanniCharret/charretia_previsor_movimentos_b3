@@ -137,3 +137,30 @@ thead th .sub2 { text-transform:none; letter-spacing:0; font-weight:400; opacity
 /* Versão no ar como hipótese em acompanhamento: tom de cautela, distinto do vigente e do retirado. */
 .e-observacao { color:var(--fraca); background:var(--fraca-fundo);
                 border:1px dashed color-mix(in srgb, var(--fraca) 45%, transparent); }
+
+/* ---------- faixa extrema v3.1: o painel das quedas (26/11/2026) ----------
+   Três cartões, um por tabela — queda larga em 2,5%, isolada em 2,5%, larga em 5% —, com a
+   quantidade de papéis e o excesso do grupo. A queda larga usa o acento, que é a cor de "há
+   vantagem"; a isolada, o neutro fraco. Nenhuma cor nova: tudo vem das variáveis de `estilo.css`. */
+.painel { margin-top:22px; display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; }
+.contagem { border:1px solid var(--rule); border-radius:3px; padding:14px 16px; background:var(--surface-2);
+            display:flex; flex-direction:column; gap:4px; }
+.contagem .qt { font-family:var(--mono); font-size:30px; font-weight:700; line-height:1.1;
+                font-variant-numeric:tabular-nums; color:var(--ink); }
+.contagem .nome { font-family:var(--display); font-size:13px; font-weight:700; color:var(--ink); }
+.contagem .exc { font-family:var(--mono); font-size:11.5px; color:var(--ink-3); }
+.contagem.larga { background:var(--acento-fundo);
+                  border-color:color-mix(in srgb, var(--acento) 40%, transparent); }
+.contagem.larga .qt { color:var(--acento); }
+.contagem.isolada .qt { color:var(--fraca); }
+.rodape-painel { margin:14px 0 0; font-family:var(--serif); font-size:13.5px; color:var(--ink-3); max-width:80ch; }
+.rodape-painel b { font-family:var(--display); font-weight:600; font-size:12.5px; color:var(--ink-2); }
+@media (max-width:620px) { .painel { grid-template-columns:1fr; } }
+
+/* O selo do tipo de queda abre o título da seção; a tabela de queda isolada sai mais apagada,
+   porque no histórico ela ficou perto da taxa-base. */
+.secao h2 .chip { margin-right:8px; vertical-align:2px; }
+.quadro.isolada tbody td { color:var(--ink-3); }
+.quadro.isolada .papel, .quadro.isolada .destaque { color:var(--ink-2); }
+.asterisco { margin:12px 0 0; font-family:var(--serif); font-size:13px; color:var(--ink-3); max-width:90ch; }
+.asterisco b { font-family:var(--display); font-weight:600; font-size:12.5px; color:var(--ink-2); }

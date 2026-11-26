@@ -35,6 +35,7 @@ mede nada novo, apenas se aplica o que já foi medido e validado fora da amostra
 | `lista_tickers_liquidos.xlsx` | os 100 papéis líquidos rastreados pela triagem (coluna `ticker`); é cópia da lista do laboratório |
 | `estudo/faixa_extrema_cortes.csv`, `estudo/faixa_extrema_medidas.csv`, `estudo/faixa_extrema_por_janela.csv` | os limiares, as frequências agregadas e as frequências janela a janela da faixa extrema, **exportados pelo laboratório** por `robusta_ml.faixa_extrema` (ver `estudo/PROVENIENCIA_FAIXA_EXTREMA.md`) |
 | `estudo/setores_cortes.csv`, `estudo/setores_por_janela.csv` | os limiares do decil 0 e as frequências janela a janela dos 18 papéis da v4, com o setor, **exportados pelo laboratório** por `robusta_ml.setores_v4` (ver `estudo/PROVENIENCIA_SETORES.md`) |
+| `estudo/amplitude_limiares.csv`, `estudo/amplitude_excessos.csv` | o limiar de "muitos papéis" por média e percentil, e o excesso de cada tipo de queda, que a v3.1 usa para separar queda larga de isolada e calcular a frequência ajustada; **exportados pelo laboratório** (ver `estudo/PROVENIENCIA_AMPLITUDE.md`) |
 | `nucleo/` | cópia do que as telas usam do laboratório (ver *Proveniência do núcleo*) |
 | `saida/*.html` | as quatro páginas geradas |
 | `planilha_estudo.py` | monta a planilha de estudo da faixa extrema: a série linha a linha, com o treino e o teste de cada divisão |
